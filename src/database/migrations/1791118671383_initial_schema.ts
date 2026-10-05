@@ -208,7 +208,6 @@ export async function up(db: Kysely<any>): Promise<void> {
       col.references('users.id').onDelete('cascade').notNull().unique(),
     )
     .addColumn('refresh_token_hash', 'text', (col) => col.notNull())
-    .addColumn('user_agent', 'text')
     .addColumn('expires_at', 'timestamptz', (col) => col.notNull())
     .addColumn('created_at', 'timestamptz', (col) =>
       col.notNull().defaultTo(sql`now()`),

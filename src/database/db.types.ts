@@ -13,8 +13,9 @@ export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
 export interface Courses {
   created_at: Generated<Timestamp>;
-  hero_image_path: string | null;
+  description: string;
   id: Generated<string>;
+  image: string | null;
   price_uzs: number;
   title: string;
   updated_at: Generated<Timestamp>;
@@ -92,7 +93,6 @@ export interface Sessions {
   expires_at: Timestamp;
   id: Generated<string>;
   refresh_token_hash: string;
-  user_agent: string | null;
   user_id: string;
 }
 
@@ -112,7 +112,7 @@ export interface Stories {
 }
 
 export interface Users {
-  avatar_path: string | null;
+  avatar: string | null;
   created_at: Generated<Timestamp>;
   email: string;
   id: Generated<string>;

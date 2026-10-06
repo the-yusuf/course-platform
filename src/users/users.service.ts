@@ -3,19 +3,20 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { hash } from 'argon2';
+import { hash, verify } from 'argon2';
 import type { Updateable } from 'kysely';
 import { DatabaseError } from 'pg';
 import { Database } from '../database/database.js';
 import type { Users } from '../database/db.types.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
+import { UpdateUserPasswordDto } from './dto/update-user-password.dto.js';
 
 const publicColumns = [
   'id',
   'username',
   'email',
-  'avatar_path',
+  'avatar',
   'role',
   'created_at',
   'updated_at',
@@ -71,11 +72,10 @@ export class UsersService {
     }
   }
 
-  async update(id: string, dto: UpdateUserDto) {
+  async updateUserInfo(id: string, dto: UpdateUserDto) {
     const data: Updateable<Users> = { updated_at: new Date() };
     if (dto.username) data.username = dto.username.trim();
     if (dto.email) data.email = dto.email.trim().toLowerCase();
-    if (dto.password) data.password_hash = await hash(dto.password);
 
     let user;
     try {
@@ -90,6 +90,31 @@ export class UsersService {
     }
     if (!user) throw new NotFoundException(`User with id ${id} not found`);
     return user;
+  }
+
+  async updateUserPassword(id: string, dto: UpdateUserPasswordDto) {
+    const user = await this.db
+      .selectFrom('users')
+      .select(['id', 'password_hash'])
+      .where('id', '=', id)
+      .executeTakeFirst();
+    if (!user) throw new NotFoundException(`User with id ${id} not found`);
+
+    const isPasswordValid = await verify(
+      user.password_hash,
+      dto.current_password,
+    );
+    if (!isPasswordValid)
+      throw new ConflictException('Current password is incorrect');
+
+    const newPasswordHash = await hash(dto.new_password);
+    const updatedUser = await this.db
+      .updateTable('users')
+      .set({ password_hash: newPasswordHash, updated_at: new Date() })
+      .where('id', '=', id)
+      .returning(publicColumns)
+      .executeTakeFirst();
+    return updatedUser;
   }
 
   async remove(id: string) {

@@ -16,6 +16,11 @@ async function bootstrap() {
     }),
   );
 
+  app.enableCors({
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
+    origin: ['http://localhost:3000'],
+  });
+
   const config = new DocumentBuilder()
     .setTitle('Chinese course platform')
     .setDescription('The backend api for the chinese course platform')

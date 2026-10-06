@@ -10,7 +10,7 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('username', 'text', (col) => col.notNull().unique())
     .addColumn('email', 'text', (col) => col.notNull().unique())
     .addColumn('password_hash', 'text', (col) => col.notNull())
-    .addColumn('avatar_path', 'text')
+    .addColumn('avatar', 'text')
     .addColumn('role', 'text', (col) => col.notNull().defaultTo('student'))
     .addColumn('created_at', 'timestamptz', (col) =>
       col.notNull().defaultTo(sql`now()`),
@@ -28,7 +28,8 @@ export async function up(db: Kysely<any>): Promise<void> {
       col.primaryKey().defaultTo(sql`gen_random_uuid()`),
     )
     .addColumn('title', 'text', (col) => col.notNull())
-    .addColumn('hero_image_path', 'text')
+    .addColumn('description', 'text', (col) => col.notNull())
+    .addColumn('image', 'text')
     .addColumn('price_uzs', 'integer', (col) => col.notNull())
     .addColumn('created_at', 'timestamptz', (col) =>
       col.notNull().defaultTo(sql`now()`),

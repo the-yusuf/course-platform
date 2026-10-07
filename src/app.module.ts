@@ -7,6 +7,8 @@ import { CoursesModule } from './courses/courses.module.js';
 import { LessonsModule } from './lessons/lessons.module.js';
 import { DictionaryCategoriesModule } from './dictionary-categories/dictionary-categories.module.js';
 import { DictionariesModule } from './dictionaries/dictionaries.module.js';
+import { ReviewsModule } from './reviews/reviews.module.js';
+import { GrammarsModule } from './grammars/grammars.module.js';
 
 @Module({
   imports: [
@@ -18,6 +20,8 @@ import { DictionariesModule } from './dictionaries/dictionaries.module.js';
     LessonsModule,
     DictionaryCategoriesModule,
     DictionariesModule,
+    ReviewsModule,
+    GrammarsModule,
   ],
   controllers: [],
   providers: [],

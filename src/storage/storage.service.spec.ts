@@ -132,8 +132,16 @@ describe('StorageService', () => {
     });
   });
 
-  it('maps keys to public URLs', () => {
-    expect(storage.url('users/a.webp')).toBe('/uploads/users/a.webp');
-    expect(storage.url(null)).toBeNull();
+  it('maps keys to absolute public URLs', () => {
+    const cdn = new StorageService(
+      new ConfigService({
+        UPLOAD_DIR: dir,
+        UPLOADS_BASE_URL: 'https://api.example.uz/uploads/',
+      }),
+    );
+    expect(cdn.url('users/a.webp')).toBe(
+      'https://api.example.uz/uploads/users/a.webp',
+    );
+    expect(cdn.url(null)).toBeNull();
   });
 });

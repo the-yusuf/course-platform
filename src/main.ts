@@ -4,6 +4,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { StorageService } from './storage/storage.service.js';
+import { UPLOADS_URL_PREFIX } from './storage/storage.constants.js';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -13,7 +14,7 @@ async function bootstrap() {
   // Uploaded files are public and served outside the `api` prefix.
   // In production, let nginx serve this directory instead.
   app.useStaticAssets(app.get(StorageService).rootDir, {
-    prefix: '/uploads/',
+    prefix: `${UPLOADS_URL_PREFIX}/`,
     index: false,
     dotfiles: 'deny',
     immutable: true, // file names are UUIDs, so content never changes

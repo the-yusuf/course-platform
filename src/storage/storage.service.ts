@@ -20,9 +20,15 @@ import {
 export class StorageService implements OnModuleInit {
   private readonly logger = new Logger(StorageService.name);
   readonly rootDir: string;
+  private readonly baseUrl: string;
 
   constructor(config: ConfigService) {
     this.rootDir = path.resolve(config.get<string>('UPLOAD_DIR') ?? 'uploads');
+    // Where clients fetch files from: this API, nginx, or later a CDN
+    this.baseUrl = (
+      config.get<string>('UPLOADS_BASE_URL') ??
+      `http://localhost:${config.get<string>('PORT') ?? 3000}${UPLOADS_URL_PREFIX}`
+    ).replace(/\/+$/, '');
   }
 
   async onModuleInit() {
@@ -104,6 +110,6 @@ export class StorageService implements OnModuleInit {
   }
 
   url(key: string | null): string | null {
-    return key ? `${UPLOADS_URL_PREFIX}/${key}` : null;
+    return key ? `${this.baseUrl}/${key}` : null;
   }
 }

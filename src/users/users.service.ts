@@ -92,6 +92,8 @@ export class UsersService {
     return user;
   }
 
+  async updateUserPhoto(id: string, file: Express.Multer.File) {}
+
   async updateUserPassword(id: string, dto: UpdateUserPasswordDto) {
     const user = await this.db
       .selectFrom('users')

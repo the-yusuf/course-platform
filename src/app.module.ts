@@ -9,6 +9,8 @@ import { DictionaryCategoriesModule } from './dictionary-categories/dictionary-c
 import { DictionariesModule } from './dictionaries/dictionaries.module.js';
 import { ReviewsModule } from './reviews/reviews.module.js';
 import { GrammarsModule } from './grammars/grammars.module.js';
+import { StoriesModule } from './stories/stories.module.js';
+import { EnrollmentsModule } from './enrollments/enrollments.module.js';
 
 @Module({
   imports: [
@@ -22,6 +24,8 @@ import { GrammarsModule } from './grammars/grammars.module.js';
     DictionariesModule,
     ReviewsModule,
     GrammarsModule,
+    StoriesModule,
+    EnrollmentsModule,
   ],
   controllers: [],
   providers: [],

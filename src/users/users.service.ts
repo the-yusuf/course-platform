@@ -8,6 +8,8 @@ import type { Updateable } from 'kysely';
 import { DatabaseError } from 'pg';
 import { Database } from '../database/database.js';
 import type { Users } from '../database/db.types.js';
+import { IMAGE_PRESETS } from '../storage/storage.constants.js';
+import { StorageService } from '../storage/storage.service.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
 import { UpdateUserPasswordDto } from './dto/update-user-password.dto.js';
@@ -24,14 +26,18 @@ const publicColumns = [
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly db: Database) {}
+  constructor(
+    private readonly db: Database,
+    private readonly storage: StorageService,
+  ) {}
 
-  findAll() {
-    return this.db
+  async findAll() {
+    const users = await this.db
       .selectFrom('users')
       .select(publicColumns)
       .orderBy('created_at', 'desc')
       .execute();
+    return users.map((user) => this.present(user));
   }
 
   async findOne(id: string) {
@@ -41,7 +47,7 @@ export class UsersService {
       .where('id', '=', id)
       .executeTakeFirst();
     if (!user) throw new NotFoundException(`User with id ${id} not found`);
-    return user;
+    return this.present(user);
   }
 
   async findByUsername(username: string) {
@@ -58,7 +64,7 @@ export class UsersService {
   async create(dto: CreateUserDto) {
     const password_hash = await hash(dto.password);
     try {
-      return await this.db
+      const user = await this.db
         .insertInto('users')
         .values({
           username: dto.username.trim(),
@@ -67,6 +73,7 @@ export class UsersService {
         })
         .returning(publicColumns)
         .executeTakeFirstOrThrow();
+      return this.present(user);
     } catch (err) {
       throw this.toConflict(err);
     }
@@ -89,10 +96,34 @@ export class UsersService {
       throw this.toConflict(err);
     }
     if (!user) throw new NotFoundException(`User with id ${id} not found`);
-    return user;
+    return this.present(user);
   }
 
-  async updateUserPhoto(id: string, file: Express.Multer.File) {}
+  async updateUserPhoto(id: string, file: Express.Multer.File) {
+    const current = await this.db
+      .selectFrom('users')
+      .select('avatar')
+      .where('id', '=', id)
+      .executeTakeFirst();
+    if (!current) throw new NotFoundException(`User with id ${id} not found`);
+
+    const user = await this.storage.replaceImage(
+      file,
+      'users',
+      IMAGE_PRESETS.avatar,
+      current.avatar,
+      (avatar) =>
+        this.db
+          .updateTable('users')
+          .set({ avatar, updated_at: new Date() })
+          .where('id', '=', id)
+          .returning(publicColumns)
+          .executeTakeFirst(),
+    );
+    // Also covers the user being deleted between the select and the update
+    if (!user) throw new NotFoundException(`User with id ${id} not found`);
+    return this.present(user);
+  }
 
   async updateUserPassword(id: string, dto: UpdateUserPasswordDto) {
     const user = await this.db
@@ -116,17 +147,23 @@ export class UsersService {
       .where('id', '=', id)
       .returning(publicColumns)
       .executeTakeFirst();
-    return updatedUser;
+    return updatedUser && this.present(updatedUser);
   }
 
   async remove(id: string) {
     const user = await this.db
       .deleteFrom('users')
       .where('id', '=', id)
-      .returning(['id'])
+      .returning(['id', 'avatar'])
       .executeTakeFirst();
     if (!user) throw new NotFoundException(`User with id ${id} not found`);
-    return user;
+    await this.storage.delete(user.avatar);
+    return { id: user.id };
+  }
+
+  // DB stores the storage key; clients get a URL
+  present<T extends { avatar: string | null }>(user: T): T {
+    return { ...user, avatar: this.storage.url(user.avatar) };
   }
 
   private toConflict(err: unknown) {

@@ -2,11 +2,24 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import type { NestExpressApplication } from '@nestjs/platform-express';
+import { StorageService } from './storage/storage.service.js';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   app.setGlobalPrefix('api');
+
+  // Uploaded files are public and served outside the `api` prefix.
+  // In production, let nginx serve this directory instead.
+  app.useStaticAssets(app.get(StorageService).rootDir, {
+    prefix: '/uploads/',
+    index: false,
+    dotfiles: 'deny',
+    immutable: true, // file names are UUIDs, so content never changes
+    maxAge: '1y',
+    setHeaders: (res) => res.setHeader('X-Content-Type-Options', 'nosniff'),
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({

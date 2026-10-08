@@ -11,14 +11,14 @@ import {
   Post,
   Put,
   UploadedFile,
-  UseInterceptors,
 } from '@nestjs/common';
 import { UsersService } from './users.service.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
 import { Roles } from '../auth/decorators/roles.decorator.js';
 import { UpdateUserPasswordDto } from './dto/update-user-password.dto.js';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { ImageUpload } from '../storage/image-upload.decorator.js';
+import { parseImagePipe } from '../storage/parse-image.pipe.js';
 
 @Controller('users')
 @Roles('admin')
@@ -57,19 +57,12 @@ export class UsersController {
   }
 
   @Put(':id/update-photo')
-  @UseInterceptors(
-    FileInterceptor('avatar', {
-      dest: './uploads/users',
-    }),
-  )
+  @ImageUpload('avatar')
   updateUserPhoto(
     @Param('id', ParseUUIDPipe) id: string,
-    @UploadedFile()
-    file: Express.Multer.File,
+    @UploadedFile(parseImagePipe) file: Express.Multer.File,
   ) {
-    console.log('File:', file);
-    console.log('id:', id);
-    // return this.usersService.updateUserPhoto(id, file);
+    return this.usersService.updateUserPhoto(id, file);
   }
 
   @Delete(':id')

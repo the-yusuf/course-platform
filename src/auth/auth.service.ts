@@ -30,7 +30,7 @@ export class AuthService {
 
     const { password_hash, ...user } = found;
     const tokens = await this.startSession(user.id);
-    return { user, ...tokens };
+    return { user: this.usersService.present(user), ...tokens };
   }
 
   async refresh(refreshToken: string) {

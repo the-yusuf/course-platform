@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 import { DatabaseModule } from './database/database.module.js';
 import { UsersModule } from './users/users.module.js';
 import { AuthModule } from './auth/auth.module.js';
@@ -11,19 +11,13 @@ import { ReviewsModule } from './reviews/reviews.module.js';
 import { GrammarsModule } from './grammars/grammars.module.js';
 import { StoriesModule } from './stories/stories.module.js';
 import { EnrollmentsModule } from './enrollments/enrollments.module.js';
-import { MulterModule } from '@nestjs/platform-express';
+import { StorageModule } from './storage/storage.module.js';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    MulterModule.registerAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        dest: configService.get<string>('MULTER_DEST'),
-      }),
-      inject: [ConfigService],
-    }),
     DatabaseModule,
+    StorageModule,
     AuthModule,
     UsersModule,
     CoursesModule,

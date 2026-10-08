@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { GrammarsService } from './grammars.service.js';
 import { CreateGrammarDto } from './dto/create-grammar.dto.js';
-import { UpdateCourseDto } from '../courses/dto/update-course.dto.js';
+import { UpdateGrammarDto } from './dto/update-grammar.dto.js';
 import { Roles } from '../auth/decorators/roles.decorator.js';
 
 @Controller('grammars')
@@ -38,7 +38,7 @@ export class GrammarsController {
   @Patch(':id')
   async update(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: UpdateCourseDto,
+    @Body() dto: UpdateGrammarDto,
   ) {
     return this.grammarsService.update(id, dto);
   }

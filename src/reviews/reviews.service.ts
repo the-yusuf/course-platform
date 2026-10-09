@@ -4,28 +4,21 @@ import { CreateReviewDto } from './dto/create-review.dto.js';
 import { UpdateReviewDto } from './dto/update-review.dto.js';
 import { Updateable } from 'kysely';
 import { Reviews } from '../database/db.types.js';
+import { jsonObjectFrom } from 'kysely/helpers/postgres';
 
 @Injectable()
 export class ReviewsService {
   constructor(private readonly db: Database) {}
 
-  async findAll() {
-    return await this.db
-      .selectFrom('reviews')
-      .selectAll()
-      .orderBy('created_at')
-      .execute();
+  findAll() {
+    return this.selectReviews().orderBy('reviews.created_at', 'desc').execute();
   }
 
   async findOne(id: string) {
-    const review = await this.db
-      .selectFrom('reviews')
-      .selectAll()
-      .where('id', '=', id)
+    const review = await this.selectReviews()
+      .where('reviews.id', '=', id)
       .executeTakeFirst();
-    if (!review)
-      throw new NotFoundException(`Review with that id ${id} not found`);
-
+    if (!review) throw new NotFoundException('Review not found');
     return review;
   }
 
@@ -64,5 +57,29 @@ export class ReviewsService {
       .executeTakeFirst();
 
     return review;
+  }
+
+  private selectReviews() {
+    return this.db.selectFrom('reviews').select((eb) => [
+      'reviews.id',
+      'reviews.comment',
+      'reviews.created_at',
+      jsonObjectFrom(
+        eb
+          .selectFrom('users')
+          .select(['users.id', 'users.username', 'users.avatar'])
+          .whereRef('users.id', '=', 'reviews.user_id'),
+      )
+        .$notNull()
+        .as('user'),
+      jsonObjectFrom(
+        eb
+          .selectFrom('courses')
+          .select(['courses.id', 'courses.title'])
+          .whereRef('courses.id', '=', 'reviews.course_id'),
+      )
+        .$notNull()
+        .as('course'),
+    ]);
   }
 }

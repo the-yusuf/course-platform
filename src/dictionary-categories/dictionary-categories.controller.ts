@@ -27,7 +27,7 @@ export class DictionaryCategoriesController {
     return this.dictionaryCategoriesService.findAll();
   }
 
-  @Roles('student')
+  @Public()
   @Get(':id')
   async findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.dictionaryCategoriesService.findOne(id);

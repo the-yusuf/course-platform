@@ -59,9 +59,9 @@ export class DictionaryCategoriesService {
 
   async update(id: string, dto: UpdateDictionaryCategoryDto) {
     const data: Updateable<DictionaryCategories> = { updated_at: new Date() };
-    if (dto.name_uz) data.name_uz = dto.name_uz;
-    if (dto.name_ru) data.name_ru = dto.name_ru;
-    if (dto.name_en) data.name_en = dto.name_en;
+    if (dto.name_uz !== undefined) data.name_uz = dto.name_uz;
+    if (dto.name_ru !== undefined) data.name_ru = dto.name_ru;
+    if (dto.name_en !== undefined) data.name_en = dto.name_en;
 
     const dictionaryCategory = await this.db
       .updateTable('dictionary_categories')
@@ -69,6 +69,10 @@ export class DictionaryCategoriesService {
       .where('id', '=', id)
       .returningAll()
       .executeTakeFirst();
+    if (!dictionaryCategory)
+      throw new NotFoundException(
+        `Dictionary category with this ${id} not found`,
+      );
     return dictionaryCategory;
   }
 
@@ -78,6 +82,10 @@ export class DictionaryCategoriesService {
       .where('id', '=', id)
       .returningAll()
       .executeTakeFirst();
+    if (!dictionaryCategory)
+      throw new NotFoundException(
+        `Dictionary category with this ${id} not found`,
+      );
     return dictionaryCategory;
   }
 }

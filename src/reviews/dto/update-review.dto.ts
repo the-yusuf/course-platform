@@ -1,4 +1,7 @@
-import { PartialType } from '@nestjs/mapped-types';
+import { PartialType, PickType } from '@nestjs/mapped-types';
 import { CreateReviewDto } from './create-review.dto.js';
 
-export class UpdateReviewDto extends PartialType(CreateReviewDto) {}
+// Only the text can change; a review can't be moved to another user or course
+export class UpdateReviewDto extends PartialType(
+  PickType(CreateReviewDto, ['comment'] as const),
+) {}

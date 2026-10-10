@@ -1,11 +1,9 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsUUID } from 'class-validator';
 
 export class CreateEnrollmentDto {
-  @IsString()
-  @IsNotEmpty()
+  @IsUUID()
   user_id: string;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsUUID()
   course_id: string;
 }

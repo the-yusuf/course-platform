@@ -28,6 +28,8 @@ export class AuthController {
     return this.authService.login(dto);
   }
 
+  
+  @Public()
   @Post('refresh')
   @HttpCode(200)
   refresh(@Body() dto: RefreshDto) {

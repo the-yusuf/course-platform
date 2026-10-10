@@ -42,15 +42,15 @@ export class StoriesService {
   async update(id: string, dto: UpdateStoryDto) {
     const data: Updateable<Stories> = { updated_at: new Date() };
 
-    if (dto.title) data.title = dto.title;
-    if (dto.title_uz) data.title_uz = dto.title_uz;
-    if (dto.title_ru) data.title_ru = dto.title_ru;
-    if (dto.title_en) data.title_en = dto.title_en;
-    if (dto.content) data.content = dto.content;
-    if (dto.content_uz) data.content_uz = dto.content_uz;
-    if (dto.content_ru) data.content_ru = dto.content_ru;
-    if (dto.content_en) data.content_en = dto.content_en;
-    if (dto.level) data.level = dto.level;
+    if (dto.title !== undefined) data.title = dto.title;
+    if (dto.title_uz !== undefined) data.title_uz = dto.title_uz;
+    if (dto.title_ru !== undefined) data.title_ru = dto.title_ru;
+    if (dto.title_en !== undefined) data.title_en = dto.title_en;
+    if (dto.content !== undefined) data.content = dto.content;
+    if (dto.content_uz !== undefined) data.content_uz = dto.content_uz;
+    if (dto.content_ru !== undefined) data.content_ru = dto.content_ru;
+    if (dto.content_en !== undefined) data.content_en = dto.content_en;
+    if (dto.level !== undefined) data.level = dto.level;
 
     const story = await this.db
       .updateTable('stories')
@@ -58,6 +58,8 @@ export class StoriesService {
       .where('id', '=', id)
       .returningAll()
       .executeTakeFirst();
+    if (!story)
+      throw new NotFoundException(`Story with this id ${id} not found`);
 
     return story;
   }
@@ -68,6 +70,8 @@ export class StoriesService {
       .where('id', '=', id)
       .returningAll()
       .executeTakeFirst();
+    if (!story)
+      throw new NotFoundException(`Story with this id ${id} not found`);
 
     return story;
   }

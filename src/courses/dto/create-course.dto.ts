@@ -9,12 +9,15 @@ import {
   Max,
   Min,
 } from 'class-validator';
+import { Trim } from '../../common/trim.decorator.js';
 
 export class CreateCourseDto {
+  @Trim()
   @IsString()
   @IsNotEmpty()
   title: string;
 
+  @Trim()
   @IsString()
   @IsNotEmpty()
   description: string;

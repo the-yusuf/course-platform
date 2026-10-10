@@ -12,6 +12,8 @@ import { ReviewsService } from './reviews.service.js';
 import { CreateReviewDto } from './dto/create-review.dto.js';
 import { UpdateReviewDto } from './dto/update-review.dto.js';
 import { Roles } from '../auth/decorators/roles.decorator.js';
+import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
+import type { AuthUser } from '../auth/auth.types.js';
 
 @Controller('reviews')
 export class ReviewsController {
@@ -28,16 +30,17 @@ export class ReviewsController {
   }
 
   @Post()
-  async create(@Body() dto: CreateReviewDto) {
-    return this.reviewsService.create(dto);
+  async create(@CurrentUser() user: AuthUser, @Body() dto: CreateReviewDto) {
+    return this.reviewsService.create(user, dto);
   }
 
   @Patch(':id')
   async update(
     @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthUser,
     @Body() dto: UpdateReviewDto,
   ) {
-    return this.reviewsService.update(id, dto);
+    return this.reviewsService.update(id, user, dto);
   }
 
   @Roles('admin')

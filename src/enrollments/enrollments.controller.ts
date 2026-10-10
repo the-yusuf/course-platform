@@ -10,6 +10,8 @@ import {
 import { EnrollmentsService } from './enrollments.service.js';
 import { CreateEnrollmentDto } from './dto/create-enrollment.dto.js';
 import { Roles } from '../auth/decorators/roles.decorator.js';
+import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
+import type { AuthUser } from '../auth/auth.types.js';
 
 @Controller('enrollments')
 @Roles('admin')
@@ -19,6 +21,12 @@ export class EnrollmentsController {
   @Get()
   findAll() {
     return this.enrollmentsService.findAll();
+  }
+
+  @Roles('student')
+  @Get('me')
+  findMine(@CurrentUser() user: AuthUser) {
+    return this.enrollmentsService.findForUser(user.id);
   }
 
   @Get(':id')

@@ -87,12 +87,12 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('word_ru', 'text', (col) => col.notNull())
     .addColumn('word_en', 'text', (col) => col.notNull())
     .addColumn('word_zh', 'text', (col) => col.notNull())
-    .addColumn('example_uz', 'text')
-    .addColumn('example_ru', 'text')
-    .addColumn('example_en', 'text')
-    .addColumn('example_zh', 'text')
-    .addColumn('pronunciation', 'text')
-    .addColumn('example_pronunciation', 'text')
+    .addColumn('example_uz', 'text', (col) => col.notNull())
+    .addColumn('example_ru', 'text', (col) => col.notNull())
+    .addColumn('example_en', 'text', (col) => col.notNull())
+    .addColumn('example_zh', 'text', (col) => col.notNull())
+    .addColumn('pronunciation', 'text', (col) => col.notNull())
+    .addColumn('example_pronunciation', 'text', (col) => col.notNull())
     .addColumn('category_id', 'uuid', (col) =>
       col.references('dictionary_categories.id').onDelete('cascade').notNull(),
     )
@@ -126,6 +126,8 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('updated_at', 'timestamptz', (col) =>
       col.notNull().defaultTo(sql`now()`),
     )
+    // one review per user per course
+    .addUniqueConstraint('reviews_user_course_unique', ['user_id', 'course_id'])
     .execute();
 
   // Grammars

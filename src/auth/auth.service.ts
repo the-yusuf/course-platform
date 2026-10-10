@@ -1,8 +1,9 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { UsersService } from '../users/users.service.js';
 import { LoginDto } from './dto/login.dto.js';
-import { verify } from 'argon2';
+import { hash, verify } from 'argon2';
 import { JwtService } from '@nestjs/jwt';
+import { isUUID } from 'class-validator';
 import {
   createHash,
   randomBytes,
@@ -16,6 +17,9 @@ const REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class AuthService {
+  // verified against when the username doesn't exist, so both cases take as long
+  private dummyHash?: Promise<string>;
+
   constructor(
     private readonly usersService: UsersService,
     private readonly jwt: JwtService,
@@ -24,7 +28,12 @@ export class AuthService {
 
   async login(dto: LoginDto) {
     const found = await this.usersService.findByUsername(dto.username);
-    if (!found || !(await verify(found.password_hash, dto.password))) {
+    if (!found) {
+      this.dummyHash ??= hash(randomBytes(16).toString('hex'));
+      await verify(await this.dummyHash, dto.password);
+      throw new UnauthorizedException('Invalid username or password');
+    }
+    if (!(await verify(found.password_hash, dto.password))) {
       throw new UnauthorizedException('Invalid username or password');
     }
 
@@ -35,7 +44,7 @@ export class AuthService {
 
   async refresh(refreshToken: string) {
     const [sessionId, secret] = refreshToken.split('.');
-    if (!sessionId || !secret)
+    if (!sessionId || !secret || !isUUID(sessionId))
       throw new UnauthorizedException('Invalid refresh token');
 
     const session = await this.db

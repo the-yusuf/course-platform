@@ -1,13 +1,22 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Database } from '../database/database.js';
 import { CreateLessonDto } from './dto/create-lesson.dto.js';
 import { UpdateLessonDto } from './dto/update-lesson.dto.js';
 import { Updateable } from 'kysely';
 import { Lessons } from '../database/db.types.js';
+import type { AuthUser } from '../auth/auth.types.js';
+import { EnrollmentsService } from '../enrollments/enrollments.service.js';
 
 @Injectable()
 export class LessonsService {
-  constructor(private readonly db: Database) {}
+  constructor(
+    private readonly db: Database,
+    private readonly enrollments: EnrollmentsService,
+  ) {}
 
   async findAll() {
     return this.db
@@ -37,7 +46,7 @@ export class LessonsService {
       .execute();
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, user: AuthUser) {
     const lesson = await this.db
       .selectFrom('lessons')
       .selectAll()
@@ -45,6 +54,12 @@ export class LessonsService {
       .executeTakeFirst();
 
     if (!lesson) throw new NotFoundException(`Lesson with id ${id} not found`);
+    if (
+      user.role !== 'admin' &&
+      !(await this.enrollments.isEnrolled(user.id, lesson.course_id))
+    ) {
+      throw new ForbiddenException('You must be enrolled in this course');
+    }
 
     const dictionaries = await this.db
       .selectFrom('dictionaries')
@@ -72,11 +87,11 @@ export class LessonsService {
 
   async update(id: string, dto: UpdateLessonDto) {
     const data: Updateable<Lessons> = { updated_at: new Date() };
-    if (dto.title_uz) data.title_uz = dto.title_uz;
-    if (dto.title_ru) data.title_ru = dto.title_ru;
-    if (dto.title_en) data.title_en = dto.title_en;
-    if (dto.video) data.video = dto.video;
-    if (dto.course_id) data.course_id = dto.course_id;
+    if (dto.title_uz !== undefined) data.title_uz = dto.title_uz;
+    if (dto.title_ru !== undefined) data.title_ru = dto.title_ru;
+    if (dto.title_en !== undefined) data.title_en = dto.title_en;
+    if (dto.video !== undefined) data.video = dto.video || null; // "" or null clears it
+    if (dto.course_id !== undefined) data.course_id = dto.course_id;
 
     const lesson = await this.db
       .updateTable('lessons')
@@ -84,6 +99,7 @@ export class LessonsService {
       .where('id', '=', id)
       .returningAll()
       .executeTakeFirst();
+    if (!lesson) throw new NotFoundException(`Lesson with id ${id} not found`);
     return lesson;
   }
 
@@ -93,6 +109,7 @@ export class LessonsService {
       .where('id', '=', id)
       .returningAll()
       .executeTakeFirst();
+    if (!lesson) throw new NotFoundException(`Lesson with id ${id} not found`);
     return lesson;
   }
 }

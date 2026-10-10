@@ -11,12 +11,14 @@ import { Courses } from '../database/db.types.js';
 import { Insertable, Updateable } from 'kysely';
 import { IMAGE_PRESETS } from '../storage/storage.constants.js';
 import { StorageService } from '../storage/storage.service.js';
+import { ReviewsService } from '../reviews/reviews.service.js';
 
 @Injectable()
 export class CoursesService {
   constructor(
     private readonly db: Database,
     private readonly storage: StorageService,
+    private readonly reviews: ReviewsService,
   ) {}
 
   async findAll() {
@@ -57,17 +59,15 @@ export class CoursesService {
 
     if (!course) throw new NotFoundException(`Course with id ${id} not found`);
 
+    // Public outline: no video links, those are behind enrollment (GET /lessons/:id)
     const lessons = await this.db
       .selectFrom('lessons')
-      .selectAll()
+      .select(['id', 'title_uz', 'title_ru', 'title_en', 'created_at'])
       .where('course_id', '=', id)
+      .orderBy('created_at')
       .execute();
 
-    const reviews = await this.db
-      .selectFrom('reviews')
-      .selectAll()
-      .where('course_id', '=', id)
-      .execute();
+    const reviews = await this.reviews.findByCourse(id);
 
     return { ...this.present(course), lessons, reviews };
   }
@@ -161,7 +161,7 @@ export class CoursesService {
     if (!course) throw new NotFoundException(`Course with id ${id} not found`);
 
     await this.storage.delete(course.image);
-    return this.present(course);
+    return { ...course, image: null }; // the file is gone, don't hand out its URL
   }
 
   // DB stores the storage key; clients get a URL

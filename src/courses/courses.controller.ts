@@ -28,7 +28,7 @@ export class CoursesController {
     return this.coursesService.findAll();
   }
 
-  @Roles('student')
+  @Public()
   @Get(':id')
   async findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.coursesService.findOne(id);

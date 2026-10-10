@@ -50,15 +50,13 @@ export class UsersService {
     return this.present(user);
   }
 
-  async findByUsername(username: string) {
-    const user = await this.db
+  // No 404 here: login must not reveal which usernames exist
+  findByUsername(username: string) {
+    return this.db
       .selectFrom('users')
       .selectAll()
       .where('username', '=', username)
       .executeTakeFirst();
-    if (!user)
-      throw new NotFoundException(`User with username ${username} not found`);
-    return user;
   }
 
   async create(dto: CreateUserDto) {
@@ -147,7 +145,12 @@ export class UsersService {
       .where('id', '=', id)
       .returning(publicColumns)
       .executeTakeFirst();
-    return updatedUser && this.present(updatedUser);
+    if (!updatedUser)
+      throw new NotFoundException(`User with id ${id} not found`);
+
+    // a password change logs the user out everywhere
+    await this.db.deleteFrom('sessions').where('user_id', '=', id).execute();
+    return this.present(updatedUser);
   }
 
   async remove(id: string) {

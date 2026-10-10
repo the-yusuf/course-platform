@@ -6,13 +6,16 @@ import {
   Module,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { APP_FILTER } from '@nestjs/core';
 import { PostgresDialect, sql } from 'kysely';
 import { Pool } from 'pg';
 import { Database } from './database.js';
+import { PgExceptionFilter } from './pg-exception.filter.js';
 
 @Global()
 @Module({
   providers: [
+    { provide: APP_FILTER, useClass: PgExceptionFilter },
     {
       provide: Database,
       inject: [ConfigService],

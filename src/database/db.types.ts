@@ -24,14 +24,14 @@ export interface Courses {
 export interface Dictionaries {
   category_id: string;
   created_at: Generated<Timestamp>;
-  example_en: string | null;
-  example_pronunciation: string | null;
-  example_ru: string | null;
-  example_uz: string | null;
-  example_zh: string | null;
+  example_en: string;
+  example_pronunciation: string;
+  example_ru: string;
+  example_uz: string;
+  example_zh: string;
   id: Generated<string>;
   lesson_id: string | null;
-  pronunciation: string | null;
+  pronunciation: string;
   updated_at: Generated<Timestamp>;
   word_en: string;
   word_ru: string;

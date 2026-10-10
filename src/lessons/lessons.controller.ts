@@ -11,8 +11,12 @@ import {
 import { LessonsService } from './lessons.service.js';
 import { CreateLessonDto } from './dto/create-lesson.dto.js';
 import { UpdateLessonDto } from './dto/update-lesson.dto.js';
+import { Roles } from '../auth/decorators/roles.decorator.js';
+import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
+import type { AuthUser } from '../auth/auth.types.js';
 
 @Controller('lessons')
+@Roles('admin')
 export class LessonsController {
   constructor(private readonly lessonsService: LessonsService) {}
 
@@ -21,9 +25,13 @@ export class LessonsController {
     return this.lessonsService.findAll();
   }
 
+  @Roles('student')
   @Get(':id')
-  async findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.lessonsService.findOne(id);
+  async findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.lessonsService.findOne(id, user);
   }
 
   @Post()

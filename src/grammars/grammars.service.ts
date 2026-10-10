@@ -41,13 +41,13 @@ export class GrammarsService {
 
   async update(id: string, dto: UpdateGrammarDto) {
     const data: Updateable<Grammars> = { updated_at: new Date() };
-    if (dto.title) data.title = dto.title;
-    if (dto.description) data.description = dto.description;
-    if (dto.example) data.example = dto.example;
-    if (dto.example_uz) data.example_uz = dto.example_uz;
-    if (dto.example_ru) data.example_ru = dto.example_ru;
-    if (dto.example_en) data.example_en = dto.example_en;
-    if (dto.lesson_id) data.lesson_id = dto.lesson_id;
+    if (dto.title !== undefined) data.title = dto.title;
+    if (dto.description !== undefined) data.description = dto.description;
+    if (dto.example !== undefined) data.example = dto.example;
+    if (dto.example_uz !== undefined) data.example_uz = dto.example_uz;
+    if (dto.example_ru !== undefined) data.example_ru = dto.example_ru;
+    if (dto.example_en !== undefined) data.example_en = dto.example_en;
+    if (dto.lesson_id !== undefined) data.lesson_id = dto.lesson_id; // null unlinks
 
     const grammar = await this.db
       .updateTable('grammars')
@@ -55,6 +55,8 @@ export class GrammarsService {
       .where('id', '=', id)
       .returningAll()
       .executeTakeFirst();
+    if (!grammar)
+      throw new NotFoundException(`Grammar with this id ${id} not found`);
 
     return grammar;
   }
@@ -65,6 +67,8 @@ export class GrammarsService {
       .where('id', '=', id)
       .returningAll()
       .executeTakeFirst();
+    if (!grammar)
+      throw new NotFoundException(`Grammar with this id ${id} not found`);
 
     return grammar;
   }

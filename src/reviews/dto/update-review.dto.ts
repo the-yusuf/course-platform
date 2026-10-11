@@ -1,4 +1,4 @@
-import { PartialType, PickType } from '@nestjs/mapped-types';
+import { PartialType, PickType } from '@nestjs/swagger';
 import { CreateReviewDto } from './create-review.dto.js';
 
 // Only the text can change; a review can't be moved to another user or course

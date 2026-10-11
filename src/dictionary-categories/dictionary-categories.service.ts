@@ -2,30 +2,32 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Database } from '../database/database.js';
 import { UpdateDictionaryCategoryDto } from './dto/update-dictionary-category.dto.js';
 import { CreateDictionaryCategoryDto } from './dto/create-dictionary-category.dto.js';
-import { Updateable } from 'kysely';
-import { DictionaryCategories } from '../database/db.types.js';
+import { sql } from 'kysely';
+import { paginate, PaginationQueryDto } from '../common/pagination.js';
+import { countOf, definedFields } from '../common/query-helpers.js';
 
 @Injectable()
 export class DictionaryCategoriesService {
   constructor(private readonly db: Database) {}
 
-  async findAll() {
-    return await this.db
-      .selectFrom('dictionary_categories')
-      .selectAll()
-      .select((eb) => [
-        eb
-          .selectFrom('dictionaries')
-          .select((eb) =>
-            eb.cast<number>(eb.fn.countAll(), 'integer').as('count'),
-          )
-          .whereRef('dictionaries.category_id', '=', 'dictionary_categories.id')
-          .$asScalar()
-          .$notNull()
-          .as('dictionaries_count'),
-      ])
-      .orderBy('created_at')
-      .execute();
+  findAll(query: PaginationQueryDto) {
+    return paginate(
+      this.db
+        .selectFrom('dictionary_categories')
+        .selectAll()
+        .select(
+          // public: free words only
+          countOf(
+            'dictionaries',
+            'category_id',
+            'dictionary_categories.id',
+            sql`dictionaries.lesson_id is null`,
+          ).as('dictionaries_count'),
+        )
+        .orderBy('created_at')
+        .orderBy('id'),
+      query,
+    );
   }
 
   async findOne(id: string) {
@@ -39,10 +41,13 @@ export class DictionaryCategoriesService {
         `Dictionary category with this ${id} not found`,
       );
 
+    // public endpoint: words that belong to a lesson are for enrolled students
     const dictionaries = await this.db
       .selectFrom('dictionaries')
       .selectAll()
       .where('category_id', '=', dictionaryCategory.id)
+      .where('lesson_id', 'is', null)
+      .orderBy('created_at')
       .execute();
 
     return { ...dictionaryCategory, dictionaries };
@@ -58,14 +63,9 @@ export class DictionaryCategoriesService {
   }
 
   async update(id: string, dto: UpdateDictionaryCategoryDto) {
-    const data: Updateable<DictionaryCategories> = { updated_at: new Date() };
-    if (dto.name_uz !== undefined) data.name_uz = dto.name_uz;
-    if (dto.name_ru !== undefined) data.name_ru = dto.name_ru;
-    if (dto.name_en !== undefined) data.name_en = dto.name_en;
-
     const dictionaryCategory = await this.db
       .updateTable('dictionary_categories')
-      .set(data)
+      .set({ ...definedFields(dto), updated_at: new Date() })
       .where('id', '=', id)
       .returningAll()
       .executeTakeFirst();

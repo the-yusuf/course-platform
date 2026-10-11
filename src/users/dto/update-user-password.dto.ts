@@ -1,13 +1,7 @@
-import { IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { IsPassword } from '../../common/validators.js';
 
+// Admin reset: no current password needed (the admin doesn't know it)
 export class UpdateUserPasswordDto {
-  @IsString()
-  @IsNotEmpty()
-  @MinLength(6)
-  current_password: string;
-
-  @IsString()
-  @IsNotEmpty()
-  @MinLength(6)
+  @IsPassword()
   new_password: string;
 }

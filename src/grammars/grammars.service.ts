@@ -1,23 +1,42 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Database } from '../database/database.js';
 import { CreateGrammarDto } from './dto/create-grammar.dto.js';
 import { UpdateGrammarDto } from './dto/update-grammar.dto.js';
-import { Updateable } from 'kysely';
-import { Grammars } from '../database/db.types.js';
+import { paginate, PaginationQueryDto } from '../common/pagination.js';
+import { definedFields } from '../common/query-helpers.js';
+import type { AuthUser } from '../auth/auth.types.js';
+import { EnrollmentsService } from '../enrollments/enrollments.service.js';
 
 @Injectable()
 export class GrammarsService {
-  constructor(private readonly db: Database) {}
+  constructor(
+    private readonly db: Database,
+    private readonly enrollments: EnrollmentsService,
+  ) {}
 
-  async findAll() {
-    return await this.db
+  /** Students see free grammar plus that of lessons they're enrolled in */
+  findAll(user: AuthUser, query: PaginationQueryDto) {
+    const list = this.db
       .selectFrom('grammars')
       .selectAll()
+      .$if(user.role !== 'admin', (qb) =>
+        qb.where((eb) =>
+          eb.or([
+            eb('lesson_id', 'is', null),
+            eb('lesson_id', 'in', this.enrollments.enrolledLessonIds(user.id)),
+          ]),
+        ),
+      )
       .orderBy('created_at')
-      .execute();
+      .orderBy('id');
+    return paginate(list, query);
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, user: AuthUser) {
     const grammar = await this.db
       .selectFrom('grammars')
       .selectAll()
@@ -25,6 +44,8 @@ export class GrammarsService {
       .executeTakeFirst();
     if (!grammar)
       throw new NotFoundException(`Grammar with this id ${id} not found`);
+    if (!(await this.enrollments.canAccessLesson(user, grammar.lesson_id)))
+      throw new ForbiddenException('You must be enrolled in this course');
 
     return grammar;
   }
@@ -40,18 +61,9 @@ export class GrammarsService {
   }
 
   async update(id: string, dto: UpdateGrammarDto) {
-    const data: Updateable<Grammars> = { updated_at: new Date() };
-    if (dto.title !== undefined) data.title = dto.title;
-    if (dto.description !== undefined) data.description = dto.description;
-    if (dto.example !== undefined) data.example = dto.example;
-    if (dto.example_uz !== undefined) data.example_uz = dto.example_uz;
-    if (dto.example_ru !== undefined) data.example_ru = dto.example_ru;
-    if (dto.example_en !== undefined) data.example_en = dto.example_en;
-    if (dto.lesson_id !== undefined) data.lesson_id = dto.lesson_id; // null unlinks
-
     const grammar = await this.db
       .updateTable('grammars')
-      .set(data)
+      .set({ ...definedFields(dto), updated_at: new Date() })
       .where('id', '=', id)
       .returningAll()
       .executeTakeFirst();

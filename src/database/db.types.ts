@@ -72,6 +72,7 @@ export interface Lessons {
   course_id: string;
   created_at: Generated<Timestamp>;
   id: Generated<string>;
+  position: number;
   title_en: string;
   title_ru: string;
   title_uz: string;
@@ -92,7 +93,9 @@ export interface Sessions {
   created_at: Generated<Timestamp>;
   expires_at: Timestamp;
   id: Generated<string>;
+  previous_refresh_token_hash: string | null;
   refresh_token_hash: string;
+  rotated_at: Timestamp | null;
   user_id: string;
 }
 

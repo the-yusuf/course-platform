@@ -8,6 +8,7 @@ import {
   IsString,
   Max,
   Min,
+  MaxLength,
 } from 'class-validator';
 import { Trim } from '../../common/trim.decorator.js';
 
@@ -15,11 +16,13 @@ export class CreateCourseDto {
   @Trim()
   @IsString()
   @IsNotEmpty()
+  @MaxLength(200)
   title: string;
 
   @Trim()
   @IsString()
   @IsNotEmpty()
+  @MaxLength(5000)
   description: string;
 
   // Multipart fields arrive as strings. Empty strings are left as-is so they

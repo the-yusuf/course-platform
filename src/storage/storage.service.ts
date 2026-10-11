@@ -112,4 +112,12 @@ export class StorageService implements OnModuleInit {
   url(key: string | null): string | null {
     return key ? `${this.baseUrl}/${key}` : null;
   }
+
+  /** The DB stores storage keys; clients get URLs. Swaps `obj[key]` for its URL. */
+  withUrl<T extends { [P in K]: string | null }, K extends keyof T>(
+    obj: T,
+    key: K,
+  ): T {
+    return { ...obj, [key]: this.url(obj[key]) };
+  }
 }

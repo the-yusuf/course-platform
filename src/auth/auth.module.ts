@@ -5,12 +5,18 @@ import { UsersModule } from '../users/users.module.js';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuthGuard } from './guards/auth.guard.js';
 import { RolesGuard } from './guards/roles.guard.js';
+import { throttlerOptions } from './throttling.js';
 
 @Module({
   imports: [
     UsersModule,
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: throttlerOptions,
+    }),
     JwtModule.registerAsync({
       global: true,
       inject: [ConfigService],
@@ -23,6 +29,11 @@ import { RolesGuard } from './guards/roles.guard.js';
   controllers: [AuthController],
   providers: [
     AuthService,
+    // runs first, so throttled requests never reach the DB
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
     {
       provide: APP_GUARD,
       useClass: AuthGuard,

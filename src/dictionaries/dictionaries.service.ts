@@ -1,23 +1,42 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Database } from '../database/database.js';
 import { UpdateDictionaryDto } from './dto/update-dictionary.dto.js';
 import { CreateDictionaryDto } from './dto/create-dicionary.dto.js';
-import { Updateable } from 'kysely';
-import { Dictionaries } from '../database/db.types.js';
+import { paginate, PaginationQueryDto } from '../common/pagination.js';
+import { definedFields } from '../common/query-helpers.js';
+import type { AuthUser } from '../auth/auth.types.js';
+import { EnrollmentsService } from '../enrollments/enrollments.service.js';
 
 @Injectable()
 export class DictionariesService {
-  constructor(private readonly db: Database) {}
+  constructor(
+    private readonly db: Database,
+    private readonly enrollments: EnrollmentsService,
+  ) {}
 
-  async findAll() {
-    return await this.db
+  /** Students see free words plus those of lessons they're enrolled in */
+  findAll(user: AuthUser, query: PaginationQueryDto) {
+    const list = this.db
       .selectFrom('dictionaries')
       .selectAll()
+      .$if(user.role !== 'admin', (qb) =>
+        qb.where((eb) =>
+          eb.or([
+            eb('lesson_id', 'is', null),
+            eb('lesson_id', 'in', this.enrollments.enrolledLessonIds(user.id)),
+          ]),
+        ),
+      )
       .orderBy('created_at')
-      .execute();
+      .orderBy('id');
+    return paginate(list, query);
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, user: AuthUser) {
     const dictionary = await this.db
       .selectFrom('dictionaries')
       .selectAll()
@@ -27,6 +46,8 @@ export class DictionariesService {
       throw new NotFoundException(
         `The dictionary with this id ${id} not found`,
       );
+    if (!(await this.enrollments.canAccessLesson(user, dictionary.lesson_id)))
+      throw new ForbiddenException('You must be enrolled in this course');
 
     return dictionary;
   }
@@ -42,24 +63,9 @@ export class DictionariesService {
   }
 
   async update(id: string, dto: UpdateDictionaryDto) {
-    const data: Updateable<Dictionaries> = { updated_at: new Date() };
-    if (dto.word_uz !== undefined) data.word_uz = dto.word_uz;
-    if (dto.word_ru !== undefined) data.word_ru = dto.word_ru;
-    if (dto.word_en !== undefined) data.word_en = dto.word_en;
-    if (dto.word_zh !== undefined) data.word_zh = dto.word_zh;
-    if (dto.example_uz !== undefined) data.example_uz = dto.example_uz;
-    if (dto.example_ru !== undefined) data.example_ru = dto.example_ru;
-    if (dto.example_en !== undefined) data.example_en = dto.example_en;
-    if (dto.example_zh !== undefined) data.example_zh = dto.example_zh;
-    if (dto.pronunciation !== undefined) data.pronunciation = dto.pronunciation;
-    if (dto.example_pronunciation !== undefined)
-      data.example_pronunciation = dto.example_pronunciation;
-    if (dto.lesson_id !== undefined) data.lesson_id = dto.lesson_id; // null unlinks
-    if (dto.category_id !== undefined) data.category_id = dto.category_id;
-
     const dictionary = await this.db
       .updateTable('dictionaries')
-      .set(data)
+      .set({ ...definedFields(dto), updated_at: new Date() })
       .where('id', '=', id)
       .returningAll()
       .executeTakeFirst();

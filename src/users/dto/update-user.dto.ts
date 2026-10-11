@@ -1,15 +1,12 @@
-import { IsString, MinLength, IsEmail, IsOptional } from 'class-validator';
-import { Trim } from '../../common/trim.decorator.js';
+import { IsOptional } from 'class-validator';
+import { IsNormalizedEmail, IsUsername } from '../../common/validators.js';
 
 export class UpdateUserDto {
   @IsOptional()
-  @Trim()
-  @IsString()
-  @MinLength(3)
+  @IsUsername()
   username?: string;
 
   @IsOptional()
-  @Trim()
-  @IsEmail()
+  @IsNormalizedEmail()
   email?: string;
 }

@@ -2,19 +2,22 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Database } from '../database/database.js';
 import { CreateStoryDto } from './dto/create-story.dto.js';
 import { UpdateStoryDto } from './dto/update-story.dto.js';
-import { Updateable } from 'kysely';
-import { Stories } from '../database/db.types.js';
+import { paginate, PaginationQueryDto } from '../common/pagination.js';
+import { definedFields } from '../common/query-helpers.js';
 
 @Injectable()
 export class StoriesService {
   constructor(private readonly db: Database) {}
 
-  async findAll() {
-    return await this.db
-      .selectFrom('stories')
-      .selectAll()
-      .orderBy('created_at')
-      .execute();
+  findAll(query: PaginationQueryDto) {
+    return paginate(
+      this.db
+        .selectFrom('stories')
+        .selectAll()
+        .orderBy('created_at')
+        .orderBy('id'),
+      query,
+    );
   }
 
   async findOne(id: string) {
@@ -40,21 +43,9 @@ export class StoriesService {
   }
 
   async update(id: string, dto: UpdateStoryDto) {
-    const data: Updateable<Stories> = { updated_at: new Date() };
-
-    if (dto.title !== undefined) data.title = dto.title;
-    if (dto.title_uz !== undefined) data.title_uz = dto.title_uz;
-    if (dto.title_ru !== undefined) data.title_ru = dto.title_ru;
-    if (dto.title_en !== undefined) data.title_en = dto.title_en;
-    if (dto.content !== undefined) data.content = dto.content;
-    if (dto.content_uz !== undefined) data.content_uz = dto.content_uz;
-    if (dto.content_ru !== undefined) data.content_ru = dto.content_ru;
-    if (dto.content_en !== undefined) data.content_en = dto.content_en;
-    if (dto.level !== undefined) data.level = dto.level;
-
     const story = await this.db
       .updateTable('stories')
-      .set(data)
+      .set({ ...definedFields(dto), updated_at: new Date() })
       .where('id', '=', id)
       .returningAll()
       .executeTakeFirst();

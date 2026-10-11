@@ -19,6 +19,12 @@ export async function up(db: Kysely<any>): Promise<void> {
       col.notNull().defaultTo(sql`now()`),
     )
     .addCheckConstraint('users_role_check', sql`role in ('student', 'admin')`)
+    // the app lowercases both, so uniqueness is effectively case-insensitive
+    .addCheckConstraint(
+      'users_username_lower_check',
+      sql`username = lower(username)`,
+    )
+    .addCheckConstraint('users_email_lower_check', sql`email = lower(email)`)
     .execute();
 
   // Courses
@@ -52,6 +58,8 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('course_id', 'uuid', (col) =>
       col.references('courses.id').onDelete('cascade').notNull(),
     )
+    // order within the course, 1-based
+    .addColumn('position', 'integer', (col) => col.notNull())
     .addColumn('created_at', 'timestamptz', (col) =>
       col.notNull().defaultTo(sql`now()`),
     )
@@ -211,17 +219,22 @@ export async function up(db: Kysely<any>): Promise<void> {
       col.references('users.id').onDelete('cascade').notNull().unique(),
     )
     .addColumn('refresh_token_hash', 'text', (col) => col.notNull())
+    // the token rotated out last; still accepted for a few seconds so
+    // parallel refreshes (two tabs) don't look like token theft
+    .addColumn('previous_refresh_token_hash', 'text')
+    .addColumn('rotated_at', 'timestamptz')
     .addColumn('expires_at', 'timestamptz', (col) => col.notNull())
     .addColumn('created_at', 'timestamptz', (col) =>
       col.notNull().defaultTo(sql`now()`),
     )
     .execute();
 
-  // Indexes
+  // Indexes (unique constraints already index their leading column:
+  // reviews.user_id, enrollments.user_id, sessions.user_id)
   await db.schema
-    .createIndex('lessons_course_id_idx')
+    .createIndex('lessons_course_id_position_idx')
     .on('lessons')
-    .column('course_id')
+    .columns(['course_id', 'position'])
     .execute();
   await db.schema
     .createIndex('dictionaries_category_id_idx')
@@ -239,9 +252,14 @@ export async function up(db: Kysely<any>): Promise<void> {
     .column('lesson_id')
     .execute();
   await db.schema
-    .createIndex('reviews_user_id_idx')
+    .createIndex('reviews_course_id_idx')
     .on('reviews')
-    .column('user_id')
+    .column('course_id')
+    .execute();
+  await db.schema
+    .createIndex('enrollments_course_id_idx')
+    .on('enrollments')
+    .column('course_id')
     .execute();
 }
 

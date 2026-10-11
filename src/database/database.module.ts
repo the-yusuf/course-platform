@@ -6,16 +6,13 @@ import {
   Module,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { APP_FILTER } from '@nestjs/core';
 import { PostgresDialect, sql } from 'kysely';
 import { Pool } from 'pg';
 import { Database } from './database.js';
-import { PgExceptionFilter } from './pg-exception.filter.js';
 
 @Global()
 @Module({
   providers: [
-    { provide: APP_FILTER, useClass: PgExceptionFilter },
     {
       provide: Database,
       inject: [ConfigService],
@@ -24,7 +21,12 @@ import { PgExceptionFilter } from './pg-exception.filter.js';
           dialect: new PostgresDialect({
             pool: new Pool({
               connectionString: config.getOrThrow<string>('DATABASE_URL'),
-              max: 10,
+              max: config.getOrThrow<number>('DB_POOL_MAX'),
+              connectionTimeoutMillis: 5_000, // fail fast when the pool is exhausted
+              // a runaway query can't hold a connection forever
+              statement_timeout: config.getOrThrow<number>(
+                'DB_STATEMENT_TIMEOUT_MS',
+              ),
             }),
           }),
         }),

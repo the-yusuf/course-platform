@@ -7,5 +7,6 @@ import { EnrollmentsModule } from '../enrollments/enrollments.module.js';
   imports: [EnrollmentsModule],
   controllers: [LessonsController],
   providers: [LessonsService],
+  exports: [LessonsService],
 })
 export class LessonsModule {}

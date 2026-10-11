@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { DatabaseModule } from './database/database.module.js';
 import { UsersModule } from './users/users.module.js';
 import { AuthModule } from './auth/auth.module.js';
@@ -12,10 +13,14 @@ import { GrammarsModule } from './grammars/grammars.module.js';
 import { StoriesModule } from './stories/stories.module.js';
 import { EnrollmentsModule } from './enrollments/enrollments.module.js';
 import { StorageModule } from './storage/storage.module.js';
+import { HealthModule } from './health/health.module.js';
+import { validateEnv } from './config/env.validation.js';
+import { AllExceptionsFilter } from './common/http/all-exceptions.filter.js';
+import { ResponseEnvelopeInterceptor } from './common/http/response-envelope.interceptor.js';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
     DatabaseModule,
     StorageModule,
     AuthModule,
@@ -28,8 +33,14 @@ import { StorageModule } from './storage/storage.module.js';
     GrammarsModule,
     StoriesModule,
     EnrollmentsModule,
+    HealthModule,
   ],
   controllers: [],
-  providers: [],
+  providers: [
+    // every response: { statusCode, message, data (, meta) }
+    { provide: APP_INTERCEPTOR, useClass: ResponseEnvelopeInterceptor },
+    // every error: { statusCode, message, error, data: null }
+    { provide: APP_FILTER, useClass: AllExceptionsFilter },
+  ],
 })
 export class AppModule {}

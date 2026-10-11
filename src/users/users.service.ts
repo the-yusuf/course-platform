@@ -4,10 +4,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { hash, verify } from 'argon2';
-import type { Updateable } from 'kysely';
 import { DatabaseError } from 'pg';
 import { Database } from '../database/database.js';
-import type { Users } from '../database/db.types.js';
+import { paginate, PaginationQueryDto } from '../common/pagination.js';
+import { definedFields } from '../common/query-helpers.js';
 import { IMAGE_PRESETS } from '../storage/storage.constants.js';
 import { StorageService } from '../storage/storage.service.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
@@ -31,13 +31,16 @@ export class UsersService {
     private readonly storage: StorageService,
   ) {}
 
-  async findAll() {
-    const users = await this.db
-      .selectFrom('users')
-      .select(publicColumns)
-      .orderBy('created_at', 'desc')
-      .execute();
-    return users.map((user) => this.present(user));
+  async findAll(query: PaginationQueryDto) {
+    const page = await paginate(
+      this.db
+        .selectFrom('users')
+        .select(publicColumns)
+        .orderBy('created_at', 'desc')
+        .orderBy('id'),
+      query,
+    );
+    return page.map((user) => this.present(user));
   }
 
   async findOne(id: string) {
@@ -64,11 +67,8 @@ export class UsersService {
     try {
       const user = await this.db
         .insertInto('users')
-        .values({
-          username: dto.username.trim(),
-          email: dto.email.trim().toLowerCase(),
-          password_hash,
-        })
+        // the DTO already trimmed + lowercased both (and the DB checks it)
+        .values({ username: dto.username, email: dto.email, password_hash })
         .returning(publicColumns)
         .executeTakeFirstOrThrow();
       return this.present(user);
@@ -78,15 +78,11 @@ export class UsersService {
   }
 
   async updateUserInfo(id: string, dto: UpdateUserDto) {
-    const data: Updateable<Users> = { updated_at: new Date() };
-    if (dto.username) data.username = dto.username.trim();
-    if (dto.email) data.email = dto.email.trim().toLowerCase();
-
     let user;
     try {
       user = await this.db
         .updateTable('users')
-        .set(data)
+        .set({ ...definedFields(dto), updated_at: new Date() })
         .where('id', '=', id)
         .returning(publicColumns)
         .executeTakeFirst();
@@ -123,34 +119,37 @@ export class UsersService {
     return this.present(user);
   }
 
-  async updateUserPassword(id: string, dto: UpdateUserPasswordDto) {
+  /** Admin reset: no current password needed */
+  updateUserPassword(id: string, dto: UpdateUserPasswordDto) {
+    return this.setPassword(id, dto.new_password);
+  }
+
+  /** Changes the password and ends the user's session, atomically */
+  async setPassword(id: string, newPassword: string) {
+    const password_hash = await hash(newPassword);
+    const user = await this.db.transaction().execute(async (trx) => {
+      const updated = await trx
+        .updateTable('users')
+        .set({ password_hash, updated_at: new Date() })
+        .where('id', '=', id)
+        .returning(publicColumns)
+        .executeTakeFirst();
+      if (updated) {
+        await trx.deleteFrom('sessions').where('user_id', '=', id).execute();
+      }
+      return updated;
+    });
+    if (!user) throw new NotFoundException(`User with id ${id} not found`);
+    return this.present(user);
+  }
+
+  async verifyPassword(id: string, password: string) {
     const user = await this.db
       .selectFrom('users')
-      .select(['id', 'password_hash'])
+      .select('password_hash')
       .where('id', '=', id)
       .executeTakeFirst();
-    if (!user) throw new NotFoundException(`User with id ${id} not found`);
-
-    const isPasswordValid = await verify(
-      user.password_hash,
-      dto.current_password,
-    );
-    if (!isPasswordValid)
-      throw new ConflictException('Current password is incorrect');
-
-    const newPasswordHash = await hash(dto.new_password);
-    const updatedUser = await this.db
-      .updateTable('users')
-      .set({ password_hash: newPasswordHash, updated_at: new Date() })
-      .where('id', '=', id)
-      .returning(publicColumns)
-      .executeTakeFirst();
-    if (!updatedUser)
-      throw new NotFoundException(`User with id ${id} not found`);
-
-    // a password change logs the user out everywhere
-    await this.db.deleteFrom('sessions').where('user_id', '=', id).execute();
-    return this.present(updatedUser);
+    return !!user && (await verify(user.password_hash, password));
   }
 
   async remove(id: string) {
@@ -161,12 +160,10 @@ export class UsersService {
       .executeTakeFirst();
     if (!user) throw new NotFoundException(`User with id ${id} not found`);
     await this.storage.delete(user.avatar);
-    return { id: user.id };
   }
 
-  // DB stores the storage key; clients get a URL
   present<T extends { avatar: string | null }>(user: T): T {
-    return { ...user, avatar: this.storage.url(user.avatar) };
+    return this.storage.withUrl(user, 'avatar');
   }
 
   private toConflict(err: unknown) {

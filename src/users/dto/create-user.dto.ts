@@ -1,17 +1,16 @@
-import { IsEmail, IsString, MinLength } from 'class-validator';
-import { Trim } from '../../common/trim.decorator.js';
+import {
+  IsNormalizedEmail,
+  IsPassword,
+  IsUsername,
+} from '../../common/validators.js';
 
 export class CreateUserDto {
-  @Trim()
-  @IsString()
-  @MinLength(3)
+  @IsUsername()
   username: string;
 
-  @Trim()
-  @IsEmail()
+  @IsNormalizedEmail()
   email: string;
 
-  @IsString()
-  @MinLength(6)
+  @IsPassword()
   password: string;
 }

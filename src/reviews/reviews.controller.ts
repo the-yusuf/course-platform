@@ -7,6 +7,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { ReviewsService } from './reviews.service.js';
 import { CreateReviewDto } from './dto/create-review.dto.js';
@@ -14,27 +15,36 @@ import { UpdateReviewDto } from './dto/update-review.dto.js';
 import { Roles } from '../auth/decorators/roles.decorator.js';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import type { AuthUser } from '../auth/auth.types.js';
+import { PaginationQueryDto } from '../common/pagination.js';
+import { ApiEnvelope, ApiPaginated } from '../common/swagger.js';
+import { ReviewEntity, ReviewViewEntity } from './entities/review.entity.js';
 
 @Controller('reviews')
 export class ReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}
 
   @Get()
-  async findAll() {
-    return this.reviewsService.findAll();
+  @ApiPaginated(ReviewViewEntity)
+  async findAll(@Query() query: PaginationQueryDto) {
+    return this.reviewsService.findAll(query);
   }
 
   @Get(':id')
+  @ApiEnvelope(ReviewViewEntity)
   async findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.reviewsService.findOne(id);
   }
 
+  /** The author is the logged-in user; students must be enrolled in the course */
   @Post()
+  @ApiEnvelope(ReviewEntity, { status: 201 })
   async create(@CurrentUser() user: AuthUser, @Body() dto: CreateReviewDto) {
     return this.reviewsService.create(user, dto);
   }
 
+  /** Only the author (or an admin) can edit, and only the comment */
   @Patch(':id')
+  @ApiEnvelope(ReviewEntity)
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: AuthUser,
@@ -45,6 +55,7 @@ export class ReviewsController {
 
   @Roles('admin')
   @Delete(':id')
+  @ApiEnvelope(ReviewEntity)
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.reviewsService.remove(id);
   }

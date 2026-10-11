@@ -191,6 +191,28 @@ src/
 test/                   e2e specs + helpers
 ```
 
+## Deployment
+
+Production runs on one server with Docker Compose. nginx is installed on the server itself and adds HTTPS.
+
+| File | What it is |
+|---|---|
+| [Dockerfile](Dockerfile) | Builds the API image: compile, production dependencies only, runs as the `node` user |
+| [compose.yaml](compose.yaml) | PostgreSQL 18, a one-off `migrate` step, and the API on `127.0.0.1:3000` |
+| [.env.production.example](.env.production.example) | Template for the server's `.env` |
+| [deploy/nginx/course-platform-api.conf](deploy/nginx/course-platform-api.conf) | nginx site for the API; certbot adds HTTPS to it |
+| [deploy/update.sh](deploy/update.sh) | Pull the latest code, rebuild, migrate, restart |
+| [deploy/backup.sh](deploy/backup.sh) | Daily database dump plus an uploads archive; keeps 14 days |
+
+```bash
+docker compose up -d --build                      # first start, and every update
+docker compose run --rm migrate npm run db:seed   # first admin, from ADMIN_* in .env
+docker compose logs -f api                        # follow the API logs
+```
+
+The database and uploaded images live in the Docker volumes `db-data` and `uploads`. Back them up with
+`deploy/backup.sh`, and keep copies off the server.
+
 ## Database migrations
 
 Migrations live in [src/database/migrations](src/database/migrations). Until the first production

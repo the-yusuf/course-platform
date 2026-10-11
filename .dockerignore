@@ -1,0 +1,12 @@
+# Keep the build context small and free of secrets and local data
+.git
+node_modules
+dist
+coverage
+uploads
+*.tsbuildinfo
+*.log
+.env
+.env.*
+.vscode
+.idea

@@ -1,0 +1,79 @@
+# Production stack: PostgreSQL, a one-off migration step, and the API.
+# nginx runs on the server itself (not in Docker) and proxies to 127.0.0.1:3000.
+# Values come from .env next to this file; copy .env.production.example to start.
+#
+#   docker compose up -d --build                         start or update everything
+#   docker compose run --rm migrate npm run db:seed      create the first admin
+#   docker compose logs -f api                           follow the API logs
+
+name: course-platform
+
+x-logging: &logging
+  driver: json-file
+  options: { max-size: 10m, max-file: '5' } # rotate, so logs can't fill the disk
+
+x-database-url: &database-url postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+
+services:
+  db:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+    volumes:
+      - db-data:/var/lib/postgresql # PostgreSQL 18 images keep their data under here
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # no `ports:`, so the database is reachable only from the other containers
+    logging: *logging
+
+  # Applies pending migrations, then exits. `up` runs it before every API start.
+  migrate:
+    build:
+      context: .
+      target: build
+    command: ['npm', 'run', '--silent', 'db:migrate']
+    environment:
+      DATABASE_URL: *database-url
+      # read only by `npm run db:seed`
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: 'no'
+    logging: *logging
+
+  api:
+    build: .
+    restart: unless-stopped
+    init: true # forwards stop signals so shutdowns are graceful
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: *database-url
+      ACCESS_TOKEN_SECRET: ${ACCESS_TOKEN_SECRET:?set ACCESS_TOKEN_SECRET in .env}
+      CORS_ORIGINS: ${CORS_ORIGINS:?set CORS_ORIGINS in .env}
+      UPLOADS_BASE_URL: ${UPLOADS_BASE_URL:?set UPLOADS_BASE_URL in .env}
+      UPLOAD_DIR: /app/uploads
+      TRUST_PROXY: '1' # nginx is the one proxy in front, so rate limits see client IPs
+    ports:
+      # 127.0.0.1 only: the internet reaches the API through nginx, never directly.
+      # (A plain "3000:3000" would bypass the ufw firewall.)
+      - 127.0.0.1:3000:3000
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    logging: *logging
+
+volumes:
+  db-data:
+  uploads:

@@ -216,9 +216,10 @@ docker compose logs -f api                        # follow the API logs
 The database and uploaded images live in the Docker volumes `db-data` and `uploads`. Back them up with
 `deploy/backup.sh`, and keep copies off the server.
 
-`@img/sharp-wasm32` is a fallback for servers whose CPU lacks x86-64-v2, which sharp's native Linux
-build requires (common on budget VPSs). Sharp switches to it on its own. When you upgrade `sharp`,
-pin `@img/sharp-wasm32` to the same version.
+The image compiles libvips and sharp from source instead of using sharp's prebuilt binaries, which
+need an x86-64-v2 CPU that some VPSs hide (e.g. "QEMU Virtual CPU version 2.5+"). The first build
+takes a few minutes longer; Docker caches libvips after that. When you upgrade `sharp`, check its
+`config.libvips` in `node_modules/sharp/package.json` and raise `VIPS_VERSION` in the Dockerfile to match.
 
 ## Database migrations
 

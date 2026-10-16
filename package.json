@@ -28,7 +28,6 @@
     "db:types": "kysely-codegen --dialect postgres --out-file src/database/db.types.ts"
   },
   "dependencies": {
-    "@img/sharp-wasm32": "0.35.5",
     "@nestjs/common": "^12.0.1",
     "@nestjs/config": "^12.0.1",
     "@nestjs/core": "^12.0.1",

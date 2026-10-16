@@ -11,6 +11,7 @@ import {
   Max,
   Min,
   MinLength,
+  ValidateIf,
   validateSync,
 } from 'class-validator';
 
@@ -18,6 +19,18 @@ const toBoolean = ({ value }: { value: unknown }) =>
   value === undefined
     ? undefined
     : value === true || value === 'true' || value === '1';
+
+// docker compose passes an unset variable as an empty string
+const emptyToUndefined = ({ value }: { value: unknown }) =>
+  value === '' ? undefined : value;
+
+// The docs login is all or nothing, and Swagger can't be on in production without it
+const needsDocsLogin = (env: EnvironmentVariables) =>
+  env.SWAGGER_USERNAME !== undefined ||
+  env.SWAGGER_PASSWORD !== undefined ||
+  (env.NODE_ENV === 'production' && env.SWAGGER_ENABLED === true);
+const DOCS_LOGIN_MESSAGE =
+  'set both SWAGGER_USERNAME and SWAGGER_PASSWORD (required to turn Swagger on in production)';
 
 // Every setting the app reads. The app refuses to start if one is invalid,
 // instead of failing later on the first request that needs it.
@@ -73,6 +86,18 @@ export class EnvironmentVariables {
   @IsBoolean()
   SWAGGER_ENABLED?: boolean;
 
+  // Browser login (HTTP Basic auth) in front of /api/docs
+  @ValidateIf(needsDocsLogin)
+  @Transform(emptyToUndefined)
+  @IsString({ message: DOCS_LOGIN_MESSAGE })
+  SWAGGER_USERNAME?: string;
+
+  @ValidateIf(needsDocsLogin)
+  @Transform(emptyToUndefined)
+  @IsString({ message: DOCS_LOGIN_MESSAGE })
+  @MinLength(12)
+  SWAGGER_PASSWORD?: string;
+
   // Rate limits: requests per window, per client IP
   @Type(() => Number)
   @IsInt()
@@ -119,9 +144,8 @@ export function validateEnv(config: Record<string, unknown>) {
   const env = plainToInstance(EnvironmentVariables, config);
   const errors = validateSync(env);
   if (errors.length > 0) {
-    const details = errors
-      .flatMap((e) => Object.values(e.constraints ?? {}))
-      .join('\n  - ');
+    const messages = errors.flatMap((e) => Object.values(e.constraints ?? {}));
+    const details = [...new Set(messages)].join('\n  - ');
     throw new Error(`Invalid environment variables:\n  - ${details}`);
   }
   return env;

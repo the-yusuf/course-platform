@@ -14,7 +14,7 @@ describe('in production', () => {
     expect((await t.http.get('/api/docs-json')).status).toBe(404);
   });
 
-  it('sends a Content-Security-Policy (relaxed only for Swagger in dev)', async () => {
+  it('sends a Content-Security-Policy', async () => {
     const res = await t.http.get('/api/courses');
     expect(res.headers['content-security-policy']).toMatch(
       /default-src 'self'/,

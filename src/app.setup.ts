@@ -7,6 +7,7 @@ import { StorageService } from './storage/storage.service.js';
 import { UPLOADS_URL_PREFIX } from './storage/storage.constants.js';
 import type { EnvironmentVariables } from './config/env.validation.js';
 import { requestLogger } from './common/request-logger.middleware.js';
+import { docsLogin } from './common/docs-login.middleware.js';
 
 /**
  * Everything that turns the bare Nest app into this API. Shared by main.ts
@@ -30,8 +31,6 @@ export function configureApp(app: NestExpressApplication) {
     helmet({
       // the frontend runs on another origin and must be able to show /uploads images
       crossOriginResourcePolicy: { policy: 'cross-origin' },
-      // Swagger UI needs inline scripts; the JSON API itself doesn't need a CSP
-      contentSecurityPolicy: swaggerEnabled ? false : undefined,
     }),
   );
 
@@ -65,7 +64,7 @@ export function configureApp(app: NestExpressApplication) {
       .filter(Boolean),
   });
 
-  if (swaggerEnabled) setupSwagger(app);
+  if (swaggerEnabled) setupSwagger(app, config);
 
   app.enableShutdownHooks();
   return app;
@@ -77,7 +76,20 @@ function parseTrustProxy(value: string): boolean | number | string {
   return /^\d+$/.test(value) ? Number(value) : value;
 }
 
-function setupSwagger(app: NestExpressApplication) {
+function setupSwagger(
+  app: NestExpressApplication,
+  env: ConfigService<EnvironmentVariables, true>,
+) {
+  // Required in production (env validation enforces it), optional elsewhere.
+  // Covers the UI, its assets under /api/docs/ and both raw documents.
+  const username = env.get('SWAGGER_USERNAME', { infer: true });
+  const password = env.get('SWAGGER_PASSWORD', { infer: true });
+  if (username && password)
+    app.use(
+      ['/api/docs', '/api/docs-json', '/api/docs-yaml'],
+      docsLogin(username, password),
+    );
+
   const config = new DocumentBuilder()
     .setTitle('Chinese course platform')
     .setDescription(

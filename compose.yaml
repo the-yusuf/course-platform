@@ -63,6 +63,10 @@ services:
       UPLOADS_BASE_URL: ${UPLOADS_BASE_URL:?set UPLOADS_BASE_URL in .env}
       UPLOAD_DIR: /app/uploads
       TRUST_PROXY: '1' # nginx is the one proxy in front, so rate limits see client IPs
+      # optional: Swagger at /api/docs, behind a browser login
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
+      SWAGGER_USERNAME: ${SWAGGER_USERNAME:-}
+      SWAGGER_PASSWORD: ${SWAGGER_PASSWORD:-}
     ports:
       # 127.0.0.1 only: the internet reaches the API through nginx, never directly.
       # (A plain "3000:3000" would bypass the ufw firewall.)

@@ -30,7 +30,9 @@ The seed is safe to run again. If the username already exists, that user is prom
 current password.
 
 **API docs:** Swagger UI at <http://localhost:3000/api/docs>, and the OpenAPI JSON
-at `/api/docs-json`. Both are disabled in production unless `SWAGGER_ENABLED=true`.
+at `/api/docs-json`. Both are disabled in production unless `SWAGGER_ENABLED=true`, which there
+also requires `SWAGGER_USERNAME` and `SWAGGER_PASSWORD`. The browser then asks for that login
+before showing the docs.
 
 ## Scripts
 
@@ -63,7 +65,8 @@ The app refuses to start if a variable is missing or invalid. See [.env.example]
 | `PORT` | `3000` | |
 | `CORS_ORIGINS` | `http://localhost:5173` | comma-separated |
 | `TRUST_PROXY` | unset | set behind a proxy, e.g. `1`, so rate limits see client IPs |
-| `SWAGGER_ENABLED` | on outside production | |
+| `SWAGGER_ENABLED` | on outside production | in production, needs the login below |
+| `SWAGGER_USERNAME` / `SWAGGER_PASSWORD` | unset | browser login for the docs; both or neither, password 12+ characters |
 | `UPLOAD_DIR` | `uploads` | |
 | `UPLOADS_BASE_URL` | `http://localhost:$PORT/uploads` | public base URL of uploaded files |
 | `DB_POOL_MAX` | `10` | |

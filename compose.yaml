@@ -29,7 +29,10 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-    # no `ports:`, so the database is reachable only from the other containers
+    ports:
+      # 127.0.0.1 only: never reachable from the internet. pgAdmin on your laptop
+      # gets in through an SSH tunnel to the server (see the deploy guide).
+      - 127.0.0.1:5432:5432
     logging: *logging
 
   # Applies pending migrations, then exits. `up` runs it before every API start.

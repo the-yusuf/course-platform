@@ -71,9 +71,7 @@ describe('Swagger behind a login', () => {
     );
 
     // browsers resend the docs login to other /api URLs
-    const withLogin = await t.http
-      .get('/api/courses')
-      .auth(USERNAME, PASSWORD);
+    const withLogin = await t.http.get('/api/courses').auth(USERNAME, PASSWORD);
     expect(withLogin.status).toBe(200);
   });
 });

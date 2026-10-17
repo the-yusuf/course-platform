@@ -2,9 +2,14 @@
 # nginx runs on the server itself (not in Docker) and proxies to 127.0.0.1:3000.
 # Values come from .env next to this file; copy .env.production.example to start.
 #
-#   docker compose up -d --build                         start or update everything
+# On the server, deploy/deploy.sh puts each commit's images (built and tested by
+# GitHub Actions) under the "-current" tags below; nothing is built there.
+#
+#   deploy/deploy.sh                                     deploy the latest commit on main
+#   docker compose up -d                                 apply .env changes
 #   docker compose run --rm migrate npm run db:seed      create the first admin
 #   docker compose logs -f api                           follow the API logs
+#   docker compose up -d --build                         build here instead (laptop, or if GitHub is down)
 
 name: course-platform
 
@@ -37,6 +42,7 @@ services:
 
   # Applies pending migrations, then exits. `up` runs it before every API start.
   migrate:
+    image: ghcr.io/the-yusuf/course-platform:migrate-current
     build:
       context: .
       target: build
@@ -54,6 +60,7 @@ services:
     logging: *logging
 
   api:
+    image: ghcr.io/the-yusuf/course-platform:api-current
     build: .
     restart: unless-stopped
     init: true # forwards stop signals so shutdowns are graceful

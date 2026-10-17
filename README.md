@@ -197,29 +197,91 @@ test/                   e2e specs + helpers
 ## Deployment
 
 Production runs on one server with Docker Compose. nginx is installed on the server itself and adds HTTPS.
+Every push to `main` is tested, built and deployed by GitHub Actions; the server never builds anything.
 
 | File | What it is |
 |---|---|
+| [.github/workflows/ci.yml](.github/workflows/ci.yml) | Tests every push and pull request; for `main`, builds the images, pushes them to ghcr.io and deploys |
 | [Dockerfile](Dockerfile) | Builds the API image: compile, production dependencies only, runs as the `node` user |
 | [compose.yaml](compose.yaml) | PostgreSQL 18, a one-off `migrate` step, and the API on `127.0.0.1:3000` |
 | [.env.production.example](.env.production.example) | Template for the server's `.env` |
+| [deploy/deploy.sh](deploy/deploy.sh) | Runs on the server: pulls one commit's images, migrates, restarts the API, checks its health |
+| [deploy/cpu-check.sh](deploy/cpu-check.sh) | Runs sharp and argon2 from an image on an emulated copy of the server's CPU |
 | [deploy/nginx/course-platform-api.conf](deploy/nginx/course-platform-api.conf) | nginx site for the API; certbot adds HTTPS to it |
-| [deploy/update.sh](deploy/update.sh) | Pull the latest code, rebuild, migrate, restart |
 | [deploy/backup.sh](deploy/backup.sh) | Daily database dump plus an uploads archive; keeps 14 days |
-
-```bash
-docker compose up -d --build                      # first start, and every update
-docker compose run --rm migrate npm run db:seed   # first admin, from ADMIN_* in .env
-docker compose logs -f api                        # follow the API logs
-```
 
 The database and uploaded images live in the Docker volumes `db-data` and `uploads`. Back them up with
 `deploy/backup.sh`, and keep copies off the server.
 
+### How a push reaches production
+
+1. **test:** lint, format check, typecheck, build, unit and e2e tests (against a PostgreSQL 18 service).
+2. **image** (in parallel): builds the API image and the `migrate` image (the Dockerfile's `build` stage),
+   runs `deploy/cpu-check.sh`, and on `main` pushes both to `ghcr.io/the-yusuf/course-platform` tagged
+   `api-<commit>` and `migrate-<commit>`.
+3. **deploy** (`main` only, after both): SSH to the server, which runs `deploy/deploy.sh <commit>`, then a
+   health check through `https://dili-chinese.uz`. About 3 seconds of downtime while the API restarts.
+
+Pull requests run steps 1 and 2 without pushing. Runs for `main` wait for each other, so deploys
+happen one at a time, in push order.
+
+`deploy.sh` checks out the commit (the server's repo is left on a detached HEAD: `git status` shows
+what is deployed), pulls its images and tags them `api-current` / `migrate-current`, which is what
+`compose.yaml` runs. So a plain `docker compose up -d`, after editing `.env` for example, never builds.
+
+### Everyday commands on the server
+
+```bash
+deploy/deploy.sh                                  # deploy the latest commit on main by hand
+deploy/deploy.sh <commit>                         # deploy a given commit, e.g. to roll back
+docker compose up -d                              # apply .env changes
+docker compose run --rm migrate npm run db:seed   # first admin, from ADMIN_* in .env
+docker compose logs -f api                        # follow the API logs
+```
+
+**Roll back** by re-running an older workflow run of `main` (Actions → the run → Re-run all jobs) or with
+`deploy/deploy.sh <commit>`. Rolling back code doesn't roll back migrations, so the older code has to
+work with the newer schema. Write migrations that add rather than remove.
+
+**If GitHub is down**, `docker compose up -d --build` on the server still builds and starts the API there.
+
+### Automatic deploys: one-time setup
+
+1. Push. The first run tests, builds and pushes the images; the deploy job is skipped until step 5.
+2. On GitHub, your profile → Packages → `course-platform` → Package settings → Change visibility → **Public**,
+   so the server can pull without a login. (The image holds no secrets: `.dockerignore` keeps `.env` out.)
+3. On the server:
+   ```bash
+   cd ~/course-platform && git pull                                 # brings deploy/deploy.sh
+   docker image rm course-platform-api course-platform-migrate      # images it built itself before
+   docker builder prune -af                                         # and their build cache
+   ```
+4. A deploy key that can only run the deploy script. On your laptop:
+   ```bash
+   ssh-keygen -t ed25519 -f ~/.ssh/dili-deploy -N '' -C github-deploy
+   ```
+   On the server, add one line to `~/.ssh/authorized_keys` with the contents of `~/.ssh/dili-deploy.pub`:
+   ```
+   restrict,command="/home/dili/course-platform/deploy/deploy.sh" ssh-ed25519 AAAA... github-deploy
+   ```
+   `restrict` turns off shells, port forwarding and the rest; `command` makes every login with this key
+   run the deploy script, which only accepts a commit that is on `main`.
+5. In the GitHub repo → Settings:
+   - **Environments → New environment `production`**. Deployment branches: `main` only. Secrets:
+     - `SSH_PRIVATE_KEY`: the contents of `~/.ssh/dili-deploy` (the file without `.pub`)
+     - `SSH_KNOWN_HOSTS`: the output of `ssh-keyscan 5.182.26.33`. Compare its fingerprint
+       (`ssh-keyscan 5.182.26.33 | ssh-keygen -lf -`) with `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`
+       on the server.
+   - **Secrets and variables → Actions → Variables**: `DEPLOY_HOST` = `5.182.26.33`, `DEPLOY_USER` = `dili`,
+     and `DEPLOY_PORT` only if SSH isn't on port 22 (then use `ssh-keyscan -p <port>` above).
+6. Actions → CI/CD → **Run workflow** on `main`. From then on, every push to `main` deploys itself.
+
+### The server's CPU
+
 The image compiles libvips and sharp from source instead of using sharp's prebuilt binaries, which
-need an x86-64-v2 CPU that some VPSs hide (e.g. "QEMU Virtual CPU version 2.5+"). The first build
-takes a few minutes longer; Docker caches libvips after that. When you upgrade `sharp`, check its
-`config.libvips` in `node_modules/sharp/package.json` and raise `VIPS_VERSION` in the Dockerfile to match.
+need an x86-64-v2 CPU that some VPSs hide (e.g. "QEMU Virtual CPU version 2.5+"). CI checks every
+image with `deploy/cpu-check.sh` before it ships. When you upgrade `sharp`, check its `config.libvips`
+in `node_modules/sharp/package.json` and raise `VIPS_VERSION` in the Dockerfile to match.
 
 ## Database migrations
 

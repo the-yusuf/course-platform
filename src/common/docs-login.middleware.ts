@@ -20,7 +20,10 @@ export function docsLogin(username: string, password: string) {
     // equal-length hashes, so the time taken says nothing about how close a guess was
     if (timingSafeEqual(sha256(given), expected)) return next();
 
-    res.setHeader('WWW-Authenticate', 'Basic realm="API docs", charset="UTF-8"');
+    res.setHeader(
+      'WWW-Authenticate',
+      'Basic realm="API docs", charset="UTF-8"',
+    );
     const body: ErrorEnvelope = {
       statusCode: 401,
       message: 'Log in to see the API docs',

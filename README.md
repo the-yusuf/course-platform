@@ -252,17 +252,19 @@ work with the newer schema. Write migrations that add rather than remove.
    so the server can pull without a login. (The image holds no secrets: `.dockerignore` keeps `.env` out.)
 3. On the server:
    ```bash
-   cd ~/course-platform && git pull                                 # brings deploy/deploy.sh
-   docker image rm course-platform-api course-platform-migrate      # images it built itself before
-   docker builder prune -af                                         # and their build cache
+   cd ~/course-platform && git pull     # brings deploy/deploy.sh
+   docker builder prune -af             # the cache of the builds it did itself
    ```
 4. A deploy key that can only run the deploy script. On your laptop:
    ```bash
    ssh-keygen -t ed25519 -f ~/.ssh/dili-deploy -N '' -C github-deploy
    ```
-   On the server, add one line to `~/.ssh/authorized_keys` with the contents of `~/.ssh/dili-deploy.pub`:
-   ```
-   restrict,command="/home/dili/course-platform/deploy/deploy.sh" ssh-ed25519 AAAA... github-deploy
+   It's a second key next to your own, used only by GitHub. Add its public half to the server's
+   `~/.ssh/authorized_keys`, behind two options, then check that the script refuses a made-up argument:
+   ```bash
+   echo "restrict,command=\"/home/dili/course-platform/deploy/deploy.sh\" $(cat ~/.ssh/dili-deploy.pub)" \
+     | ssh dili@5.182.26.33 'cat >> ~/.ssh/authorized_keys'
+   ssh -i ~/.ssh/dili-deploy -o IdentitiesOnly=yes dili@5.182.26.33 hello   # deploy: expected a full ... hash
    ```
    `restrict` turns off shells, port forwarding and the rest; `command` makes every login with this key
    run the deploy script, which only accepts a commit that is on `main`.
@@ -275,6 +277,9 @@ work with the newer schema. Write migrations that add rather than remove.
    - **Secrets and variables → Actions → Variables**: `DEPLOY_HOST` = `5.182.26.33`, `DEPLOY_USER` = `dili`,
      and `DEPLOY_PORT` only if SSH isn't on port 22 (then use `ssh-keyscan -p <port>` above).
 6. Actions → CI/CD → **Run workflow** on `main`. From then on, every push to `main` deploys itself.
+   Once it's green, the containers run the images from GitHub, so delete the ones the server built itself:
+   `docker image rm course-platform-api course-platform-migrate`. (Before that, Docker refuses: the
+   running containers still use them.)
 
 ### The server's CPU
 

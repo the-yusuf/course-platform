@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { mkdtemp, rm, stat, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
@@ -65,6 +65,24 @@ describe('StorageService', () => {
       await rm(outside, { force: true });
     }
   });
+
+  // root may write anywhere, so the check can't fail there
+  it.skipIf(process.getuid?.() === 0)(
+    'refuses to start when the upload dir is not writable',
+    async () => {
+      await chmod(dir, 0o555);
+      try {
+        const readOnly = new StorageService(
+          new ConfigService({ UPLOAD_DIR: dir }),
+        );
+        await expect(readOnly.onModuleInit()).rejects.toThrow(
+          /is not writable/,
+        );
+      } finally {
+        await chmod(dir, 0o755);
+      }
+    },
+  );
 
   it('does not throw for missing or empty keys', async () => {
     await expect(storage.delete('users/missing.webp')).resolves.toBeUndefined();

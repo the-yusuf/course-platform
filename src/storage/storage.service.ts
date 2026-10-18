@@ -6,7 +6,8 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
-import { mkdir, unlink, writeFile } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import { access, mkdir, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import sharp from 'sharp';
 import {
@@ -33,6 +34,16 @@ export class StorageService implements OnModuleInit {
 
   async onModuleInit() {
     await mkdir(this.rootDir, { recursive: true });
+    // Fail at startup, not on the first upload: a host folder mounted with the
+    // wrong owner would otherwise turn every upload into a 500
+    try {
+      await access(this.rootDir, constants.W_OK);
+    } catch {
+      throw new Error(
+        `Upload dir ${this.rootDir} is not writable by uid ${process.getuid?.()}. ` +
+          'If it is a mounted host folder, give it to that user: sudo chown -R 1000:1000 <folder>',
+      );
+    }
     this.logger.log(`Storing uploads in ${this.rootDir}`);
   }
 

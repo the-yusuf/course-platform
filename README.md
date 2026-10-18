@@ -207,10 +207,11 @@ Every push to `main` is tested, built and deployed by GitHub Actions; the server
 | [.env.production.example](.env.production.example) | Template for the server's `.env` |
 | [deploy/deploy.sh](deploy/deploy.sh) | Runs on the server: pulls one commit's images, migrates, restarts the API, checks its health |
 | [deploy/cpu-check.sh](deploy/cpu-check.sh) | Runs sharp and argon2 from an image on an emulated copy of the server's CPU |
-| [deploy/nginx/course-platform-api.conf](deploy/nginx/course-platform-api.conf) | nginx site for the API; certbot adds HTTPS to it |
+| [deploy/nginx/course-platform-api.conf](deploy/nginx/course-platform-api.conf) | nginx site: serves the uploaded images itself and passes everything else to the API; certbot adds HTTPS to it |
 | [deploy/backup.sh](deploy/backup.sh) | Daily database dump plus an uploads archive; keeps 14 days |
 
-The database and uploaded images live in the Docker volumes `db-data` and `uploads`. Back them up with
+The database lives in the Docker volume `db-data`; the uploaded images in the host folder
+`/srv/course-platform/uploads` (see [Uploaded images](#uploaded-images)). Back both up with
 `deploy/backup.sh`, and keep copies off the server.
 
 ### How a push reaches production
@@ -280,6 +281,31 @@ work with the newer schema. Write migrations that add rather than remove.
    Once it's green, the containers run the images from GitHub, so delete the ones the server built itself:
    `docker image rm course-platform-api course-platform-migrate`. (Before that, Docker refuses: the
    running containers still use them.)
+
+### Uploaded images
+
+nginx serves `/uploads/...` straight from disk, so image requests never reach the API, and images keep
+loading while it restarts. For that, `UPLOADS_HOST_DIR` in the server's `.env` mounts a host folder
+into the API container in place of the Docker volume `uploads`. It must be owned by uid 1000 (the
+container's `node` user), or the API refuses to start. nginx only serves names the API creates
+(`users/<uuid>.webp`, `courses/<uuid>.webp`), with the same cache and security headers the API sends.
+Without `UPLOADS_HOST_DIR` (e.g. on the laptop) the images stay in the volume and the API serves them.
+
+Moving an existing server from the volume to the folder, once:
+
+```bash
+sudo install -d -m 755 /srv/course-platform
+sudo install -d -o 1000 -g 1000 -m 755 /srv/course-platform/uploads
+nano .env      # add the line UPLOADS_HOST_DIR=/srv/course-platform/uploads
+docker compose stop api
+docker run --rm -v course-platform_uploads:/from:ro -v /srv/course-platform/uploads:/to \
+  --entrypoint cp ghcr.io/the-yusuf/course-platform:api-current -a /from/. /to/
+docker compose up -d
+```
+
+Then add the two `location /uploads` blocks from [the site file](deploy/nginx/course-platform-api.conf)
+to the server's `/etc/nginx/sites-available/course-platform-api`, inside the HTTPS server block, and run
+`sudo nginx -t && sudo systemctl reload nginx`. (Copying the whole file over would drop certbot's HTTPS lines.)
 
 ### The server's CPU
 

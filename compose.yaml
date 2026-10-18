@@ -82,7 +82,9 @@ services:
       # (A plain "3000:3000" would bypass the ufw firewall.)
       - 127.0.0.1:3000:3000
     volumes:
-      - uploads:/app/uploads
+      # Unset: the Docker volume `uploads`. Set to a host folder (an absolute path,
+      # owned by uid 1000) so nginx can serve the images from it straight off disk.
+      - ${UPLOADS_HOST_DIR:-uploads}:/app/uploads
     depends_on:
       migrate:
         condition: service_completed_successfully

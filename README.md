@@ -36,18 +36,18 @@ before showing the docs.
 
 ## Scripts
 
-| Script | What it does |
-|---|---|
-| `npm run start:dev` | Start with watch mode |
-| `npm run build` / `npm run start:prod` | Compile to `dist/` / run the compiled app |
-| `npm test` | Unit tests |
-| `npm run test:e2e` | End-to-end tests (see [Testing](#testing)) |
-| `npm run lint` / `npm run format` | oxlint / prettier |
-| `npm run db:migrate` | Apply pending migrations |
-| `npm run db:rollback` | Undo the last migration |
-| `npm run db:status` | List migrations |
-| `npm run db:seed` | Create/promote the admin from `ADMIN_*` |
-| `npm run db:types` | Regenerate `src/database/db.types.ts` from the database |
+| Script                                 | What it does                                            |
+| -------------------------------------- | ------------------------------------------------------- |
+| `npm run start:dev`                    | Start with watch mode                                   |
+| `npm run build` / `npm run start:prod` | Compile to `dist/` / run the compiled app               |
+| `npm test`                             | Unit tests                                              |
+| `npm run test:e2e`                     | End-to-end tests (see [Testing](#testing))              |
+| `npm run lint` / `npm run format`      | oxlint / prettier                                       |
+| `npm run db:migrate`                   | Apply pending migrations                                |
+| `npm run db:rollback`                  | Undo the last migration                                 |
+| `npm run db:status`                    | List migrations                                         |
+| `npm run db:seed`                      | Create/promote the admin from `ADMIN_*`                 |
+| `npm run db:types`                     | Regenerate `src/database/db.types.ts` from the database |
 
 The `db:*` scripts read `.env` themselves. Variables already set in your shell
 win, e.g. `DATABASE_URL=… npm run db:migrate`.
@@ -57,24 +57,24 @@ win, e.g. `DATABASE_URL=… npm run db:migrate`.
 Every variable is validated at startup ([env.validation.ts](src/config/env.validation.ts)).
 The app refuses to start if a variable is missing or invalid. See [.env.example](.env.example).
 
-| Variable | Default | Notes |
-|---|---|---|
-| `DATABASE_URL` | **required** | `postgres://…` |
-| `ACCESS_TOKEN_SECRET` | **required** | at least 32 characters |
-| `NODE_ENV` | `development` | `production` hides Swagger and DB error details |
-| `PORT` | `3000` | |
-| `CORS_ORIGINS` | `http://localhost:5173` | comma-separated |
-| `TRUST_PROXY` | unset | set behind a proxy, e.g. `1`, so rate limits see client IPs |
-| `SWAGGER_ENABLED` | on outside production | in production, needs the login below |
-| `SWAGGER_USERNAME` / `SWAGGER_PASSWORD` | unset | browser login for the docs; both or neither, password 12+ characters |
-| `UPLOAD_DIR` | `uploads` | |
-| `UPLOADS_BASE_URL` | `http://localhost:$PORT/uploads` | public base URL of uploaded files |
-| `DB_POOL_MAX` | `10` | |
-| `DB_STATEMENT_TIMEOUT_MS` | `10000` | |
-| `THROTTLE_TTL_MS` / `THROTTLE_LIMIT` | `60000` / `120` | per IP, per route |
-| `THROTTLE_AUTH_LIMIT` | `10` | per IP, for login, register, refresh, logout and password change |
-| `THROTTLE_LOGIN_USERNAME_LIMIT` / `…_TTL_MS` | `5` / 15 min | login attempts per username, then that username is blocked |
-| `ADMIN_USERNAME` / `ADMIN_EMAIL` / `ADMIN_PASSWORD` | unset | read only by `db:seed` |
+| Variable                                            | Default                          | Notes                                                                |
+| --------------------------------------------------- | -------------------------------- | -------------------------------------------------------------------- |
+| `DATABASE_URL`                                      | **required**                     | `postgres://…`                                                       |
+| `ACCESS_TOKEN_SECRET`                               | **required**                     | at least 32 characters                                               |
+| `NODE_ENV`                                          | `development`                    | `production` hides Swagger and DB error details                      |
+| `PORT`                                              | `3000`                           |                                                                      |
+| `CORS_ORIGINS`                                      | `http://localhost:5173`          | comma-separated                                                      |
+| `TRUST_PROXY`                                       | unset                            | set behind a proxy, e.g. `1`, so rate limits see client IPs          |
+| `SWAGGER_ENABLED`                                   | on outside production            | in production, needs the login below                                 |
+| `SWAGGER_USERNAME` / `SWAGGER_PASSWORD`             | unset                            | browser login for the docs; both or neither, password 12+ characters |
+| `UPLOAD_DIR`                                        | `uploads`                        |                                                                      |
+| `UPLOADS_BASE_URL`                                  | `http://localhost:$PORT/uploads` | public base URL of uploaded files                                    |
+| `DB_POOL_MAX`                                       | `10`                             |                                                                      |
+| `DB_STATEMENT_TIMEOUT_MS`                           | `10000`                          |                                                                      |
+| `THROTTLE_TTL_MS` / `THROTTLE_LIMIT`                | `60000` / `120`                  | per IP, per route                                                    |
+| `THROTTLE_AUTH_LIMIT`                               | `10`                             | per IP, for login, register, refresh, logout and password change     |
+| `THROTTLE_LOGIN_USERNAME_LIMIT` / `…_TTL_MS`        | `5` / 15 min                     | login attempts per username, then that username is blocked           |
+| `ADMIN_USERNAME` / `ADMIN_EMAIL` / `ADMIN_PASSWORD` | unset                            | read only by `db:seed`                                               |
 
 ---
 
@@ -85,31 +85,48 @@ Every route is under **`/api`**. Uploaded files are served from **`/uploads`**.
 ### Responses
 
 Success:
+
 ```json
-{ "statusCode": 200, "message": "Success", "data": { } }
+{ "statusCode": 200, "message": "Success", "data": {} }
 ```
+
 Lists are paginated with `?page=1&limit=20` (`limit` ≤ 100) and add `meta`:
+
 ```json
-{ "statusCode": 200, "message": "Success", "data": [ ], "meta": { "total": 42, "page": 1, "limit": 20, "totalPages": 3 } }
+{
+  "statusCode": 200,
+  "message": "Success",
+  "data": [],
+  "meta": { "total": 42, "page": 1, "limit": 20, "totalPages": 3 }
+}
 ```
+
 Errors:
+
 ```json
-{ "statusCode": 400, "message": ["username must be ..."], "error": "Bad Request", "data": null }
+{
+  "statusCode": 400,
+  "message": ["username must be ..."],
+  "error": "Bad Request",
+  "data": null
+}
 ```
+
 `message` is a list for validation errors and a string otherwise. `204 No Content`
 responses have no body. Unknown body or query fields are rejected with `400`.
 
 ### Authentication
 
-| Step | Endpoint | Notes |
-|---|---|---|
-| Register | `POST /api/auth/register` | creates a **student** |
-| Log in | `POST /api/auth/login` | returns `{ user, access_token, refresh_token }` |
-| Call the API | `Authorization: Bearer <access_token>` | the access token is a JWT valid for **1 hour** |
-| Refresh | `POST /api/auth/refresh` `{ refresh_token }` | returns a **new pair**; no access token needed |
-| Log out | `POST /api/auth/logout` `{ refresh_token }` | works after the access token has expired |
+| Step         | Endpoint                                     | Notes                                           |
+| ------------ | -------------------------------------------- | ----------------------------------------------- |
+| Register     | `POST /api/auth/register`                    | creates a **student**                           |
+| Log in       | `POST /api/auth/login`                       | returns `{ user, access_token, refresh_token }` |
+| Call the API | `Authorization: Bearer <access_token>`       | the access token is a JWT valid for **1 hour**  |
+| Refresh      | `POST /api/auth/refresh` `{ refresh_token }` | returns a **new pair**; no access token needed  |
+| Log out      | `POST /api/auth/logout` `{ refresh_token }`  | works after the access token has expired        |
 
 How sessions behave:
+
 - **One session per user.** Logging in again ends the previous session.
 - **Refresh tokens rotate on every use** and last 7 days. If a token is reused after it has
   been rotated, the server assumes it was stolen and ends the session.
@@ -138,23 +155,24 @@ Rate limits respond with `429` and `Retry-After…` headers.
 
 ### Endpoints
 
-| Area | Endpoints |
-|---|---|
-| Auth | `POST register, login, refresh, logout` · `GET me` · `PATCH me` · `PUT me/password` · `PUT me/avatar` |
+| Area          | Endpoints                                                                                                                                     |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Auth          | `POST register, login, refresh, logout` · `GET me` · `PATCH me` · `PUT me/password` · `PUT me/avatar`                                         |
 | Users (admin) | `GET /users` · `GET/DELETE /users/:id` · `POST /users` · `PATCH :id/update-info` · `PUT :id/update-password` (reset) · `PUT :id/update-photo` |
-| Courses | `GET /courses` · `GET /courses/:id` (public) · `POST/PATCH/DELETE` (admin) · `PUT /courses/:id/lessons/order` (admin) |
-| Lessons | `GET /lessons` (admin) · `GET /lessons/:id` (enrolled) · `POST/PATCH/DELETE` (admin) |
-| Vocabulary | `/dictionary-categories` (public reads) · `/dictionaries` · `/grammars` (reads: logged in, gated) |
-| Stories | `/stories` (reads: logged in; writes: admin) |
-| Enrollments | `/enrollments` (admin) · `GET /enrollments/me` |
-| Reviews | `GET` (logged in) · `POST` (enrolled; author = you; one per course) · `PATCH` (author or admin) · `DELETE` (admin) |
-| Health | `GET /health` (public, pings the DB) |
+| Courses       | `GET /courses` · `GET /courses/:id` (public) · `POST/PATCH/DELETE` (admin) · `PUT /courses/:id/lessons/order` (admin)                         |
+| Lessons       | `GET /lessons` (admin) · `GET /lessons/:id` (enrolled) · `POST/PATCH/DELETE` (admin)                                                          |
+| Vocabulary    | `/dictionary-categories` (public reads) · `/dictionaries` · `/grammars` (reads: logged in, gated)                                             |
+| Stories       | `/stories` (reads: logged in; writes: admin)                                                                                                  |
+| Enrollments   | `/enrollments` (admin) · `GET /enrollments/me`                                                                                                |
+| Reviews       | `GET` (logged in) · `POST` (enrolled; author = you; one per course) · `PATCH` (author or admin) · `DELETE` (admin)                            |
+| Health        | `GET /health` (public, pings the DB)                                                                                                          |
 
 Swagger documents every request body and response.
 
 ### Uploads
 
 `multipart/form-data` uploads: the user avatar goes in field `avatar`, and the course image in field `image`.
+
 - **Accepted:** JPEG, PNG or WebP, up to 5 MB. The file type is checked from its bytes, not its name.
 - **Stored as:** a re-encoded WebP with metadata stripped (512×512 for avatars, 1280×720 for course images).
 - **Responses:** return the absolute URL of the stored file.
@@ -199,16 +217,16 @@ test/                   e2e specs + helpers
 Production runs on one server with Docker Compose. nginx is installed on the server itself and adds HTTPS.
 Every push to `main` is tested, built and deployed by GitHub Actions; the server never builds anything.
 
-| File | What it is |
-|---|---|
-| [.github/workflows/ci.yml](.github/workflows/ci.yml) | Tests every push and pull request; for `main`, builds the images, pushes them to ghcr.io and deploys |
-| [Dockerfile](Dockerfile) | Builds the API image: compile, production dependencies only, runs as the `node` user |
-| [compose.yaml](compose.yaml) | PostgreSQL 18, a one-off `migrate` step, and the API on `127.0.0.1:3000` |
-| [.env.production.example](.env.production.example) | Template for the server's `.env` |
-| [deploy/deploy.sh](deploy/deploy.sh) | Runs on the server: pulls one commit's images, migrates, restarts the API, checks its health |
-| [deploy/cpu-check.sh](deploy/cpu-check.sh) | Runs sharp and argon2 from an image on an emulated copy of the server's CPU |
+| File                                                                           | What it is                                                                                                    |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| [.github/workflows/ci.yml](.github/workflows/ci.yml)                           | Tests every push and pull request; for `main`, builds the images, pushes them to ghcr.io and deploys          |
+| [Dockerfile](Dockerfile)                                                       | Builds the API image: compile, production dependencies only, runs as the `node` user                          |
+| [compose.yaml](compose.yaml)                                                   | PostgreSQL 18, a one-off `migrate` step, and the API on `127.0.0.1:3000`                                      |
+| [.env.production.example](.env.production.example)                             | Template for the server's `.env`                                                                              |
+| [deploy/deploy.sh](deploy/deploy.sh)                                           | Runs on the server: pulls one commit's images, migrates, restarts the API, checks its health                  |
+| [deploy/cpu-check.sh](deploy/cpu-check.sh)                                     | Runs sharp and argon2 from an image on an emulated copy of the server's CPU                                   |
 | [deploy/nginx/course-platform-api.conf](deploy/nginx/course-platform-api.conf) | nginx site: serves the uploaded images itself and passes everything else to the API; certbot adds HTTPS to it |
-| [deploy/backup.sh](deploy/backup.sh) | Daily database dump plus an uploads archive; keeps 14 days |
+| [deploy/backup.sh](deploy/backup.sh)                                           | Daily database dump plus an uploads archive; keeps 14 days                                                    |
 
 The database lives in the Docker volume `db-data`; the uploaded images in the host folder
 `/srv/course-platform/uploads` (see [Uploaded images](#uploaded-images)). Back both up with
@@ -264,18 +282,18 @@ work with the newer schema. Write migrations that add rather than remove.
    `~/.ssh/authorized_keys`, behind two options, then check that the script refuses a made-up argument:
    ```bash
    echo "restrict,command=\"/home/dili/course-platform/deploy/deploy.sh\" $(cat ~/.ssh/dili-deploy.pub)" \
-     | ssh dili@5.182.26.33 'cat >> ~/.ssh/authorized_keys'
-   ssh -i ~/.ssh/dili-deploy -o IdentitiesOnly=yes dili@5.182.26.33 hello   # deploy: expected a full ... hash
+     | ssh dili@187.126.29.106 'cat >> ~/.ssh/authorized_keys'
+   ssh -i ~/.ssh/dili-deploy -o IdentitiesOnly=yes dili@187.126.29.106 hello   # deploy: expected a full ... hash
    ```
    `restrict` turns off shells, port forwarding and the rest; `command` makes every login with this key
    run the deploy script, which only accepts a commit that is on `main`.
 5. In the GitHub repo → Settings:
    - **Environments → New environment `production`**. Deployment branches: `main` only. Secrets:
      - `SSH_PRIVATE_KEY`: the contents of `~/.ssh/dili-deploy` (the file without `.pub`)
-     - `SSH_KNOWN_HOSTS`: the output of `ssh-keyscan 5.182.26.33`. Compare its fingerprint
-       (`ssh-keyscan 5.182.26.33 | ssh-keygen -lf -`) with `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`
+     - `SSH_KNOWN_HOSTS`: the output of `ssh-keyscan 187.126.29.106`. Compare its fingerprint
+       (`ssh-keyscan 187.126.29.106 | ssh-keygen -lf -`) with `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`
        on the server.
-   - **Secrets and variables → Actions → Variables**: `DEPLOY_HOST` = `5.182.26.33`, `DEPLOY_USER` = `dili`,
+   - **Secrets and variables → Actions → Variables**: `DEPLOY_HOST` = `187.126.29.106`, `DEPLOY_USER` = `dili`,
      and `DEPLOY_PORT` only if SSH isn't on port 22 (then use `ssh-keyscan -p <port>` above).
 6. Actions → CI/CD → **Run workflow** on `main`. From then on, every push to `main` deploys itself.
    Once it's green, the containers run the images from GitHub, so delete the ones the server built itself:
